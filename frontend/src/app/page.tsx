@@ -47,11 +47,11 @@ export default function Dashboard() {
         </div>
         <div className="flex gap-4">
           <button
-            onClick={() => setView("setup")}
+            onClick={() => window.location.href = '/lobby'}
             className="secondary-button flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            New Group
+            Lobby & Discovery
           </button>
           <button className="premium-button">Connect Wallet</button>
         </div>

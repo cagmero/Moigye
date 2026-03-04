@@ -16,18 +16,33 @@ interface IBiddingEngine {
 
 /**
  * @title GyeManager
- * @dev Hub chain (Creditcoin) contract for ROSCA state management.
- * Verifies cross-chain deposit proofs from Sepolia using 0x0FD2 precompile.
+ * @dev Hub chain (Creditcoin) contract for ROSCA state management and Lobby system.
  */
 contract GyeManager is Ownable {
     using NativeQueryVerifierLib for INativeQueryVerifier;
 
     struct GyeGroup {
         uint256 groupId;
+        address moderator;
         address[] members;
-        uint256 monthlyContribution;
-        uint256 biddingTimestamp;
+        address[] pendingRequests;
+        uint256 fixedDeposit;
+        uint256 maxParticipants;
+        uint256 biddingDate;
+        bool isPublic;
         bool isActive;
+        bool started;
+    }
+
+    struct GroupView {
+        uint256 groupId;
+        address moderator;
+        uint256 currentParticipants;
+        uint256 maxParticipants;
+        uint256 fixedDeposit;
+        uint256 totalPotAmount;
+        uint256 biddingDate;
+        bool isPublic;
     }
 
     IBiddingEngine public biddingEngine;
@@ -35,7 +50,9 @@ contract GyeManager is Ownable {
     mapping(uint256 => GyeGroup) public groups;
     mapping(bytes32 => bool) public processedTransactions;
 
-    event GroupCreated(uint256 indexed groupId, address[] members, uint256 contribution, uint256 biddingTimestamp);
+    event GroupCreated(uint256 indexed groupId, address moderator, bool isPublic, uint256 deposit);
+    event JoinRequest(uint256 indexed groupId, address indexed user);
+    event MemberJoined(uint256 indexed groupId, address indexed user);
     event ContributionVerified(uint256 indexed groupId, address indexed user, uint256 amount);
 
     bytes32 public constant DEPOSIT_EVENT_SIG = keccak256("ContributionDeposited(address,uint256,uint256,uint256)");
@@ -44,27 +61,133 @@ contract GyeManager is Ownable {
         biddingEngine = IBiddingEngine(_biddingEngine);
     }
 
-    function createGyeGroup(
-        address[] calldata members,
-        uint256 monthlyContribution,
-        uint256 biddingTimestamp
-    ) external onlyOwner {
+    function createGroup(
+        bool _isPublic,
+        uint256 _fixedDeposit,
+        uint256 _maxParticipants,
+        uint256 _biddingDate
+    ) external {
         uint256 groupId = nextGroupId++;
-        groups[groupId] = GyeGroup({
-            groupId: groupId,
-            members: members,
-            monthlyContribution: monthlyContribution,
-            biddingTimestamp: biddingTimestamp,
-            isActive: true
-        });
+        GyeGroup storage group = groups[groupId];
+        group.groupId = groupId;
+        group.moderator = msg.sender;
+        group.fixedDeposit = _fixedDeposit;
+        group.maxParticipants = _maxParticipants;
+        group.biddingDate = _biddingDate;
+        group.isPublic = _isPublic;
+        group.isActive = true;
 
-        biddingEngine.createGyeGroup(groupId, members, monthlyContribution, biddingTimestamp);
-        emit GroupCreated(groupId, members, monthlyContribution, biddingTimestamp);
+        group.members.push(msg.sender);
+        
+        emit GroupCreated(groupId, msg.sender, _isPublic, _fixedDeposit);
+        emit MemberJoined(groupId, msg.sender);
     }
 
-    /**
-     * @notice Synchronously verifies a cross-chain deposit proof from Sepolia.
-     */
+    function joinPublicGroup(uint256 _groupId) external {
+        GyeGroup storage group = groups[_groupId];
+        require(group.isActive, "Group not active");
+        require(group.isPublic, "Group is private");
+        require(group.members.length < group.maxParticipants, "Group full");
+        
+        for (uint256 i = 0; i < group.members.length; i++) {
+            require(group.members[i] != msg.sender, "Already a member");
+        }
+
+        group.members.push(msg.sender);
+        emit MemberJoined(_groupId, msg.sender);
+    }
+
+    function requestJoin(uint256 _groupId) external {
+        GyeGroup storage group = groups[_groupId];
+        require(group.isActive, "Group not active");
+        require(!group.isPublic, "Group is public");
+        
+        for (uint256 i = 0; i < group.members.length; i++) {
+            require(group.members[i] != msg.sender, "Already a member");
+        }
+        for (uint256 i = 0; i < group.pendingRequests.length; i++) {
+            require(group.pendingRequests[i] != msg.sender, "Request pending");
+        }
+
+        group.pendingRequests.push(msg.sender);
+        emit JoinRequest(_groupId, msg.sender);
+    }
+
+    function approveRequest(uint256 _groupId, address _user) external {
+        GyeGroup storage group = groups[_groupId];
+        require(msg.sender == group.moderator, "Not moderator");
+        require(group.members.length < group.maxParticipants, "Group full");
+
+        bool found = false;
+        for (uint256 i = 0; i < group.pendingRequests.length; i++) {
+            if (group.pendingRequests[i] == _user) {
+                group.pendingRequests[i] = group.pendingRequests[group.pendingRequests.length - 1];
+                group.pendingRequests.pop();
+                found = true;
+                break;
+            }
+        }
+        require(found, "Request not found");
+
+        group.members.push(_user);
+        emit MemberJoined(_groupId, _user);
+    }
+
+    function declineRequest(uint256 _groupId, address _user) external {
+        GyeGroup storage group = groups[_groupId];
+        require(msg.sender == group.moderator, "Not moderator");
+
+        for (uint256 i = 0; i < group.pendingRequests.length; i++) {
+            if (group.pendingRequests[i] == _user) {
+                group.pendingRequests[i] = group.pendingRequests[group.pendingRequests.length - 1];
+                group.pendingRequests.pop();
+                break;
+            }
+        }
+    }
+
+    function startAuction(uint256 _groupId) external {
+        GyeGroup storage group = groups[_groupId];
+        require(msg.sender == group.moderator, "Not moderator");
+        require(!group.started, "Already started");
+        
+        group.started = true;
+        biddingEngine.createGyeGroup(_groupId, group.members, group.fixedDeposit, group.biddingDate);
+    }
+
+    function getAllPublicGroups() external view returns (GroupView[] memory) {
+        uint256 count = 0;
+        for (uint256 i = 0; i < nextGroupId; i++) {
+            if (groups[i].isActive && groups[i].isPublic) {
+                count++;
+            }
+        }
+
+        GroupView[] memory publicGroups = new GroupView[](count);
+        uint256 index = 0;
+        for (uint256 i = 0; i < nextGroupId; i++) {
+            if (groups[i].isActive && groups[i].isPublic) {
+                GyeGroup storage g = groups[i];
+                publicGroups[index] = GroupView({
+                    groupId: g.groupId,
+                    moderator: g.moderator,
+                    currentParticipants: g.members.length,
+                    maxParticipants: g.maxParticipants,
+                    fixedDeposit: g.fixedDeposit,
+                    totalPotAmount: g.members.length * g.fixedDeposit,
+                    biddingDate: g.biddingDate,
+                    isPublic: g.isPublic
+                });
+                index++;
+            }
+        }
+        return publicGroups;
+    }
+
+    function getPendingRequests(uint256 _groupId) external view returns (address[] memory) {
+        return groups[_groupId].pendingRequests;
+    }
+
     function verifyDeposit(
         uint64 chainKey,
         uint64 height,
@@ -90,7 +213,6 @@ contract GyeManager is Ownable {
         
         require(logs.length > 0, "Deposit event not found");
 
-        // Decode: ContributionDeposited(address user, uint256 amount, uint256 roundId, uint256 depositId)
         (address user, uint256 amount, uint256 groupId, ) = abi.decode(logs[0].data, (address, uint256, uint256, uint256));
         
         address indexedUser = address(uint160(uint256(logs[0].topics[1])));
@@ -101,4 +223,5 @@ contract GyeManager is Ownable {
         emit ContributionVerified(groupId, user, amount);
     }
 }
+
 
