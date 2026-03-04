@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Filter, ArrowRight, ArrowUpDown, Globe, Shield, Users, DollarSign, Calendar } from "lucide-react";
+import { Plus, Search, Filter, ArrowRight, ArrowUpDown, Globe, Shield, Users, DollarSign, Calendar, Loader2 } from "lucide-react";
 import DiscoveryExplorer from "@/components/DiscoveryExplorer";
 import ModeratorPanel from "@/components/ModeratorPanel";
+import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { GYE_MANAGER_CONTRACT } from "@/lib/contracts";
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -23,7 +25,40 @@ const itemVariants = {
 
 export default function LobbyPage() {
     const [view, setView] = useState<"landing" | "create" | "discover" | "moderate">("landing");
+
+    // Create Group Form State
     const [isPublic, setIsPublic] = useState(true);
+    const [deposit, setDeposit] = useState("1000");
+    const [maxParticipants, setMaxParticipants] = useState("10");
+    const [biddingDate, setBiddingDate] = useState("");
+
+    // Contract Interaction
+    const { writeContract, data: hash, isPending: isCreating } = useWriteContract();
+    const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+    useEffect(() => {
+        if (isConfirmed) {
+            setView("landing");
+            // Ideally redirect to /circles or show success toast
+        }
+    }, [isConfirmed]);
+
+    const handleCreateGroup = () => {
+        if (!deposit || !maxParticipants || !biddingDate || isCreating) return;
+
+        const dateTimestamp = Math.floor(new Date(biddingDate).getTime() / 1000);
+
+        writeContract({
+            ...GYE_MANAGER_CONTRACT,
+            functionName: "createGroup",
+            args: [
+                isPublic,
+                BigInt(deposit),
+                BigInt(maxParticipants),
+                BigInt(dateTimestamp)
+            ],
+        });
+    };
 
     return (
         <div className="min-h-screen bg-[#FAFAFA] selection:bg-slate-200">
@@ -37,7 +72,7 @@ export default function LobbyPage() {
                         variants={containerVariants}
                         className="max-w-7xl mx-auto px-6 py-20 space-y-32"
                     >
-                        {/* Sarvam Style Hero */}
+                        {/* Hero */}
                         <motion.div className="text-center space-y-8" variants={itemVariants}>
                             <h1 className="text-7xl md:text-8xl font-black text-slate-900 leading-[1.1] tracking-[-0.05em]">
                                 The Future of <br />
@@ -66,20 +101,6 @@ export default function LobbyPage() {
                                     Explore Pools
                                 </motion.button>
                             </div>
-                        </motion.div>
-
-                        {/* Visual Accents / Stats */}
-                        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-12 pt-20 border-t border-slate-100">
-                            {[
-                                { label: "Active Nodes", val: "1.2k+" },
-                                { label: "Total TVL", val: "$4.8M" },
-                                { label: "Members Joined", val: "15,400" }
-                            ].map((stat, i) => (
-                                <div key={i} className="text-center space-y-1">
-                                    <p className="text-4xl font-black text-slate-900">{stat.val}</p>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                                </div>
-                            ))}
                         </motion.div>
 
                         {/* Quick Actions Grid */}
@@ -145,12 +166,15 @@ export default function LobbyPage() {
                             Back home
                         </button>
 
-                        <div className="glass-morphism p-12 rounded-[3rem] space-y-10">
+                        <div className="glass-morphism p-12 rounded-[3rem] space-y-10 border border-white/40 shadow-premium">
                             <div className="flex justify-between items-center">
-                                <h2 className="text-4xl font-black text-slate-900 tracking-tighter">New Gye Group</h2>
+                                <div className="space-y-1">
+                                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter">New Gye Group</h2>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Creditcoin Network Setup</p>
+                                </div>
                                 <div
                                     onClick={() => setIsPublic(!isPublic)}
-                                    className={`w-16 h-8 rounded-full cursor-pointer transition-colors relative flex items-center ${isPublic ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                                    className={`w-16 h-8 rounded-full cursor-pointer transition-colors relative flex items-center ${isPublic ? 'bg-blue-600' : 'bg-slate-300'}`}
                                 >
                                     <motion.div
                                         animate={{ x: isPublic ? 34 : 4 }}
@@ -162,7 +186,7 @@ export default function LobbyPage() {
                             <div className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100/50 flex items-center gap-5">
                                 {isPublic ? (
                                     <>
-                                        <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                                        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
                                             <Globe className="w-6 h-6" />
                                         </div>
                                         <div>
@@ -189,16 +213,21 @@ export default function LobbyPage() {
                                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">Fixed Deposit (USDC)</label>
                                         <input
                                             type="number"
+                                            value={deposit}
+                                            onChange={(e) => setDeposit(e.target.value)}
                                             placeholder="1000"
                                             className="w-full p-6 bg-white border border-slate-200 rounded-3xl outline-none focus:border-slate-900 focus:shadow-premium transition-all font-black text-xl"
                                         />
                                     </div>
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">Max Participants</label>
-                                        <select className="w-full p-6 bg-white border border-slate-200 rounded-3xl outline-none focus:border-slate-900 focus:shadow-premium transition-all font-black text-xl appearance-none">
-                                            <option>10 Members</option>
-                                            <option>20 Members</option>
-                                        </select>
+                                        <input
+                                            type="number"
+                                            value={maxParticipants}
+                                            onChange={(e) => setMaxParticipants(e.target.value)}
+                                            placeholder="10"
+                                            className="w-full p-6 bg-white border border-slate-200 rounded-3xl outline-none focus:border-slate-900 focus:shadow-premium transition-all font-black text-xl"
+                                        />
                                     </div>
                                 </div>
 
@@ -206,6 +235,8 @@ export default function LobbyPage() {
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">Initial Bidding Date</label>
                                     <input
                                         type="datetime-local"
+                                        value={biddingDate}
+                                        onChange={(e) => setBiddingDate(e.target.value)}
                                         className="w-full p-6 bg-white border border-slate-200 rounded-3xl outline-none focus:border-slate-900 focus:shadow-premium transition-all font-black text-xl"
                                     />
                                 </div>
@@ -214,10 +245,12 @@ export default function LobbyPage() {
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => setView("landing")}
-                                className="premium-button w-full py-6 text-xl"
+                                disabled={isCreating || isConfirming}
+                                onClick={handleCreateGroup}
+                                className="premium-button w-full py-6 text-xl flex items-center justify-center gap-3"
                             >
-                                Initialize Protocol
+                                {isCreating ? <Loader2 className="w-6 h-6 animate-spin" /> : null}
+                                {isCreating ? "Initializing..." : isConfirming ? "Confirming..." : "Deploy Circle"}
                             </motion.button>
                         </div>
                     </motion.div>

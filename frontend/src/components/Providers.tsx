@@ -1,11 +1,15 @@
 "use client";
 
 import { PrivyProvider } from "@privy-io/react-auth";
+import { createConfig, WagmiProvider } from "@privy-io/wagmi";
+import { http } from "viem";
 import { defineChain } from "viem";
 import { sepolia } from "viem/chains";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Shield } from "lucide-react";
 
-const creditcoinTestnet = defineChain({
+// 1. Define Custom Chain
+export const creditcoinTestnet = defineChain({
     id: 102031,
     name: "Creditcoin Testnet",
     network: "creditcoin-testnet",
@@ -28,7 +32,19 @@ const creditcoinTestnet = defineChain({
             url: "https://creditcoin-testnet.blockscout.com",
         },
     },
+    testnet: true,
 });
+
+// 2. Create Wagmi Config via Privy
+export const wagmiConfig = createConfig({
+    chains: [creditcoinTestnet, sepolia],
+    transports: {
+        [creditcoinTestnet.id]: http(),
+        [sepolia.id]: http(),
+    },
+});
+
+const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
@@ -75,7 +91,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 },
             }}
         >
-            {children}
+            <QueryClientProvider client={queryClient}>
+                <WagmiProvider config={wagmiConfig}>
+                    {children}
+                </WagmiProvider>
+            </QueryClientProvider>
         </PrivyProvider>
     );
 }
