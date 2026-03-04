@@ -3,29 +3,33 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Wallet, Menu } from "lucide-react";
+import Link from "next/link";
 
 export default function Navbar() {
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
             <div className="max-w-7xl mx-auto flex items-center justify-between glass-morphism px-8 py-3 rounded-full">
                 {/* Logo */}
-                <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = '/'}>
-                    <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-black text-xl">
-                        M
-                    </div>
+                <Link href="/" className="flex items-center gap-2 cursor-pointer">
+                    <img src="/logo.svg" alt="Moigye Logo" className="w-8 h-8 rounded-lg object-contain" />
                     <span className="text-xl font-black text-slate-900 tracking-tighter">MOIGYE</span>
-                </div>
+                </Link>
 
                 {/* Links */}
                 <div className="hidden md:flex items-center gap-10">
-                    {['Lobby', 'Arena', 'Credit', 'Governance'].map((item) => (
-                        <a
-                            key={item}
-                            href={`/${item.toLowerCase()}`}
+                    {[
+                        { label: 'Lobby', href: '/lobby' },
+                        { label: 'Arena', href: '/lobby' }, // Point to discovery for now
+                        { label: 'Credit', href: '/credit' },
+                        { label: 'Governance', href: '/governance' }
+                    ].map((item) => (
+                        <Link
+                            key={item.label}
+                            href={item.href}
                             className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest"
                         >
-                            {item}
-                        </a>
+                            {item.label}
+                        </Link>
                     ))}
                 </div>
 

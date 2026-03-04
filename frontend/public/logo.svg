@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="blueGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F97316" />
+      <stop offset="100%" stop-color="#F43F5E" />
+    </linearGradient>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <rect width="500" height="500" rx="115" fill="#FAFAFA" />
+
+  <g filter="url(#softGlow)">
+    
+    <path d="M 140 340 L 140 200 L 250 300" 
+          fill="none" 
+          stroke="url(#blueGrad)" 
+          stroke-width="48" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <path d="M 250 300 L 360 200 L 360 340" 
+          fill="none" 
+          stroke="url(#orangeGrad)" 
+          stroke-width="48" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <circle cx="250" cy="180" r="28" fill="url(#blueGrad)" />
+    
+  </g>
+</svg>

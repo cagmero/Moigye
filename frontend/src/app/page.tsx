@@ -1,163 +1,245 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
+import { motion } from "framer-motion";
 import {
-  LineChart,
-  Wallet,
+  ArrowRight,
   Globe,
-  TrendingUp,
-  ShieldCheck,
-  ArrowUpRight,
+  Shield,
+  Zap,
   Users,
-  Calendar,
-  Gavel,
-  CheckCircle2,
-  Plus
+  TrendingUp,
+  Layers,
+  Lock,
+  Cpu
 } from "lucide-react";
-import GroupSetupView from "@/components/GroupSetupView";
-import LiveArena from "@/components/LiveArena";
+import Link from "next/link";
 
-export default function Dashboard() {
-  const [view, setView] = useState<"overview" | "setup" | "arena">("overview");
-  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2
+    }
+  }
+};
 
-  const stats = [
-    { label: "Credit Score", value: "742", icon: ShieldCheck, color: "text-blue-900" },
-    { label: "TVL (Sepolia)", value: "$12,400", icon: Wallet, color: "text-slate-600" },
-    { label: "Current Round", value: "4 / 10", icon: Calendar, color: "text-slate-600" },
-    { label: "Participants", value: "10", icon: Users, color: "text-slate-600" },
-  ];
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20 }
+  }
+};
 
-  const handleCreateGroup = (data: any) => {
-    console.log("Creating group:", data);
-    setActiveGroupId(1); // Demo ID
-    setView("overview");
-  };
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/50">
-      {/* Header */}
-      <header className="flex justify-between items-center bg-white/50 p-6 rounded-3xl border border-slate-200/60 backdrop-blur-sm">
-        <div onClick={() => setView("overview")} className="cursor-pointer">
-          <h1 className="text-2xl font-bold text-blue-900 flex items-center gap-2">
-            <Globe className="w-8 h-8" />
-            Moigye protocol
-          </h1>
-          <p className="text-slate-500 font-medium mt-1">Decentralized Cross-Chain ROSCA</p>
-        </div>
-        <div className="flex gap-4">
-          <button
-            onClick={() => window.location.href = '/lobby'}
-            className="secondary-button flex items-center gap-2"
+    <div className="min-h-screen bg-[#FAFAFA] overflow-x-hidden pt-20">
+      {/* Background Mesh Elements */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-5%] w-[60%] h-[60%] bg-blue-50/40 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] bg-indigo-50/40 rounded-full blur-[120px]" />
+      </div>
+
+      {/* Hero Section */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 pt-24 pb-32">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="text-center space-y-12"
+        >
+          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/5 border border-slate-900/10 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+            </span>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Protocol V1.0 Live on Sepolia</p>
+          </motion.div>
+
+          <motion.h1
+            variants={itemVariants}
+            className="text-7xl md:text-9xl font-black text-slate-900 tracking-[-0.06em] leading-[0.95]"
           >
-            <Plus className="w-4 h-4" />
-            Lobby & Discovery
-          </button>
-          <button className="premium-button">Connect Wallet</button>
-        </div>
-      </header>
+            Social Savings.<br />
+            <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Redefined.</span>
+          </motion.h1>
 
-      {view === "setup" ? (
-        <GroupSetupView onCreateGroup={handleCreateGroup} />
-      ) : view === "arena" ? (
-        <LiveArena groupId={activeGroupId || 1} />
-      ) : (
-        <>
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, i) => (
-              <div key={i} className="glass-card p-6 border-b-4 border-b-blue-900/10 hover:translate-y-[-2px] transition-transform">
-                <div className="flex justify-between items-start mb-4">
-                  <div className={`p-2.5 rounded-xl bg-slate-50 ${stat.color}`}>
-                    <stat.icon className="w-6 h-6" />
+          <motion.p
+            variants={itemVariants}
+            className="text-xl md:text-2xl text-slate-500 font-medium max-w-3xl mx-auto leading-relaxed"
+          >
+            Moigye brings the age-old tradition of ROSCA (Gye) to the blockchain.
+            Harnessing cross-chain proofs and AI-driven yield for trustless community finance.
+          </motion.p>
+
+          <motion.div variants={itemVariants} className="flex flex-wrap justify-center gap-6 pt-8">
+            <Link href="/lobby">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="premium-button text-lg px-12 py-6 bg-slate-900 text-white shadow-2xl shadow-slate-900/20"
+              >
+                Join the Lobby
+              </motion.button>
+            </Link>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="secondary-button text-lg px-12 py-6 bg-white border border-slate-200"
+            >
+              The Whitepaper
+            </motion.button>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* Abstract Idea Section */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 py-40">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="space-y-8"
+          >
+            <h2 className="text-5xl font-black text-slate-900 tracking-tight leading-tight">
+              The Evolution of <br /> Community Support.
+            </h2>
+            <div className="space-y-6">
+              <p className="text-lg text-slate-500 font-medium leading-relaxed">
+                Traditional ROSCAs (Rotating Savings and Credit Associations) rely on physical trust.
+                Moigye digitizes this social contract using <span className="text-slate-900 font-bold underline decoration-blue-500/30">Creditcoin Native Proofs</span>.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                    <Shield className="w-5 h-5" />
                   </div>
-                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                  <h4 className="font-black text-slate-900 uppercase text-xs tracking-widest">Trustless Gye</h4>
+                  <p className="text-sm text-slate-400 font-medium">No centralized custodian. Smart contracts manage the pot and bidding logic.</p>
                 </div>
-                <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">{stat.label}</p>
-                <h3 className="text-2xl font-bold mt-1 text-slate-900">{stat.value}</h3>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Pool Card */}
-            <div className="lg:col-span-2 glass-card overflow-hidden">
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Active Pool Overview</h2>
-                  <p className="text-slate-500 text-sm mt-1">Verified via Creditcoin Native Proofs</p>
-                </div>
-                <div className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-100">
-                  LIVE ROUND
-                </div>
-              </div>
-              <div className="p-8 space-y-8">
-                <div className="flex items-end gap-1">
-                  <span className="text-5xl font-bold text-slate-900">$1,000</span>
-                  <span className="text-xl font-semibold text-slate-400 mb-1.5">/ Pot Value</span>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm font-bold text-slate-900 mb-2">
-                    <span>Round Progress</span>
-                    <span>8 / 10 Deposits</span>
+                <div className="space-y-3">
+                  <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                    <TrendingUp className="w-5 h-5" />
                   </div>
-                  <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                    <div className="bg-blue-900 h-full w-[80%] rounded-full shadow-lg shadow-blue-900/20" />
-                  </div>
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <button
-                    className="premium-button flex-1 py-4 text-lg"
-                  >
-                    Deposit Contribution
-                  </button>
-                  <button
-                    onClick={() => setView("arena")}
-                    className="secondary-button flex-1 py-4 text-lg flex items-center justify-center gap-2"
-                  >
-                    <Gavel className="w-5 h-5" />
-                    Enter Live Arena
-                  </button>
+                  <h4 className="font-black text-slate-900 uppercase text-xs tracking-widest">Yield-Boosted</h4>
+                  <p className="text-sm text-slate-400 font-medium">Idle funds earn interest via Aave integration, lowering the net cost for members.</p>
                 </div>
               </div>
             </div>
+          </motion.div>
 
-            {/* History / Yield Card */}
-            <div className="glass-card flex flex-col">
-              <div className="p-6 border-b border-slate-100 italic">
-                <h2 className="text-lg font-bold text-slate-900">Yield Agent Activity</h2>
-                <p className="text-slate-500 text-sm">Autonomous CRE Monitoring</p>
-              </div>
-              <div className="p-6 flex-1 space-y-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="relative"
+          >
+            <div className="glass-morphism rounded-[3rem] p-12 aspect-square flex flex-col justify-center border border-slate-200/50 bg-white/50 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-3xl" />
+              <div className="relative z-10 space-y-12">
+                <div className="flex justify-between items-center">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Pot</p>
+                    <p className="text-6xl font-black text-slate-900 tracking-tighter">$12,400</p>
+                  </div>
+                  <Users className="w-12 h-12 text-slate-200" />
+                </div>
+                <div className="space-y-6">
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      whileInView={{ width: "75%" }}
+                      transition={{ duration: 1.5, delay: 0.5 }}
+                      className="h-full bg-slate-900"
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
+                    <span>Active Bidding</span>
+                    <span>12 / 16 Members</span>
+                  </div>
+                </div>
                 <div className="flex gap-4">
-                  <div className="w-1 bg-blue-900/20 rounded-full" />
-                  <div className="space-y-4">
-                    <div className="flex gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-blue-900 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">Yield Optimized</p>
-                        <p className="text-xs text-slate-500">240 USDC moved to Aave Pool</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <ArrowUpRight className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">New Deposit Verified</p>
-                        <p className="text-xs text-slate-500">Hub sync completed via 0x0FD2</p>
-                      </div>
-                    </div>
-                  </div>
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex-1 h-16 rounded-2xl bg-slate-50 border border-slate-100" />
+                  ))}
                 </div>
               </div>
-              <div className="p-6 bg-slate-50/50 rounded-b-2xl border-t border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Protocol V1.0 - Sepolia Hub</p>
-              </div>
             </div>
+            {/* Floating Accents */}
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-100/50 rounded-full blur-2xl" />
+            <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-blue-100/50 rounded-full blur-2xl" />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Feature Grid */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 py-32 border-t border-slate-100">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          {[
+            {
+              icon: <Globe className="w-8 h-8" />,
+              title: "Cross-Chain Sync",
+              desc: "Verify deposits on Spoke vaults and sync to the Sepolia Hub instantly via 0x0FD2 precompiles."
+            },
+            {
+              icon: <Cpu className="w-8 h-8" />,
+              title: "AI Yield Agents",
+              desc: "Autonomous CRE agents manage pooled collateral, ensuring every dollar earns maximum market returns."
+            },
+            {
+              icon: <Lock className="w-8 h-8" />,
+              title: "Reputation Layer",
+              desc: "Build your on-chain credit history. Successful Gye rounds unlock lower rates and higher protocol limits."
+            }
+          ].map((feature, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              viewport={{ once: true }}
+              className="space-y-6 p-8 rounded-[2.5rem] hover:bg-white hover:shadow-premium transition-all duration-500"
+            >
+              <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
+                {feature.icon}
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{feature.title}</h3>
+                <p className="text-base text-slate-500 font-medium leading-relaxed">{feature.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer CTA */}
+      <section className="relative z-10 max-w-5xl mx-auto px-6 pb-40 pt-20">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          className="bg-slate-900 rounded-[4rem] p-16 md:p-24 text-center space-y-12 relative overflow-hidden"
+        >
+          <div className="absolute inset-0 mesh-gradient opacity-10" />
+          <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter relative z-10"> Ready to start <br /> your first circle?</h2>
+          <div className="flex justify-center gap-6 relative z-10">
+            <Link href="/lobby">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-white text-slate-900 px-12 py-6 rounded-full text-xl font-black tracking-tight"
+              >
+                Launch App
+              </motion.button>
+            </Link>
           </div>
-        </>
-      )}
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs relative z-10">Fully Decentralized. Audited Contracts. Open Source.</p>
+        </motion.div>
+      </section>
     </div>
   );
 }

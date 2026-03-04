@@ -11,6 +11,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Moigye | Premium ROSCA Protocol",
   description: "The future of decentralized social finance.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
