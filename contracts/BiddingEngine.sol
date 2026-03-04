@@ -6,79 +6,143 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title BiddingEngine
- * @dev Hub chain (Creditcoin) contract for ROSCA bidding logic.
- * Implements blind discount bidding where the highest bidder wins the pot.
+ * @dev Hub chain (Creditcoin) contract for Nak-chal-gye auction lifecycle.
  */
 contract BiddingEngine is Ownable, ReentrancyGuard {
-    struct Bid {
-        uint256 discount;
-        bool exists;
+    enum Phase { Idle, Deposit, BiddingR1, Voting, FinalChallenge, Completed }
+
+    struct GyeGroup {
+        uint256 groupId;
+        address[] members;
+        uint256 monthlyContribution;
+        uint256 biddingTimestamp;
+        uint256 highestBid;
+        address highestBidder;
+        Phase phase;
+        mapping(address => bool) hasDeposited;
+        mapping(address => bool) hasWon;
+        mapping(address => bool) satisfactionVotes;
+        uint256 positiveVotes;
+        uint256 votingEndTime;
     }
 
-    struct RoundBids {
-        mapping(address => Bid) bids;
-        address[] bidders;
-        address winner;
-        uint256 maxDiscount;
-        bool isRevealed;
-    }
-
-    uint256 public constant TOTAL_USERS = 10; // Example fixed size
-    uint256 public constant MONTHLY_CONTRIBUTION = 100 * 1e6; // 100 USDC (6 decimals)
-    uint256 public currentRoundId;
-
-    mapping(uint256 => RoundBids) private roundBids;
-    mapping(address => bool) public hasWon;
-
-    event BidSubmitted(address indexed bidder, uint256 roundId);
-    event WinnerSelected(uint256 indexed roundId, address indexed winner, uint256 discount, uint256 payout);
+    mapping(uint256 => GyeGroup) public groups;
+    
+    event BidPlaced(uint256 indexed groupId, address indexed bidder, uint256 discountAmount);
+    event PhaseTransition(uint256 indexed groupId, Phase newPhase);
+    event WinnerSelected(uint256 indexed groupId, address indexed winner, uint256 payout, uint256 yieldPerMember);
 
     constructor() Ownable(msg.sender) {}
 
-    function submitBid(uint256 discount) external nonReentrant {
-        require(!hasWon[msg.sender], "User already won a round");
-        require(!roundBids[currentRoundId].bids[msg.sender].exists, "Bid already submitted");
-        
-        roundBids[currentRoundId].bids[msg.sender] = Bid(discount, true);
-        roundBids[currentRoundId].bidders.push(msg.sender);
-
-        emit BidSubmitted(msg.sender, currentRoundId);
-    }
-
-    function selectWinner() external onlyOwner {
-        RoundBids storage round = roundBids[currentRoundId];
-        require(round.bidders.length > 0, "No bidders");
-        require(round.winner == address(0), "Winner already selected");
-
-        address winner = address(0);
-        uint256 maxDiscount = 0;
-
-        for (uint256 i = 0; i < round.bidders.length; i++) {
-            address bidder = round.bidders[i];
-            if (round.bids[bidder].discount > maxDiscount) {
-                maxDiscount = round.bids[bidder].discount;
-                winner = bidder;
+    modifier onlyGroupMember(uint256 groupId) {
+        bool isMember = false;
+        for (uint256 i = 0; i < groups[groupId].members.length; i++) {
+            if (groups[groupId].members[i] == msg.sender) {
+                isMember = true;
+                break;
             }
         }
+        require(isMember, "Not a group member");
+        _;
+    }
 
-        // If multiple same bids, first one wins for simplicity in this hackathon
-        require(winner != address(0), "Winner selection failed");
+    function createGyeGroup(
+        uint256 groupId,
+        address[] calldata members,
+        uint256 monthlyContribution,
+        uint256 biddingTimestamp
+    ) external {
+        // Restricted to GyeManager in production
+        GyeGroup storage group = groups[groupId];
+        group.groupId = groupId;
+        group.members = members;
+        group.monthlyContribution = monthlyContribution;
+        group.biddingTimestamp = biddingTimestamp;
+        group.phase = Phase.Idle;
+    }
 
-        round.winner = winner;
-        round.maxDiscount = maxDiscount;
-        hasWon[winner] = true;
+    function startDepositWindow(uint256 groupId) external {
+        require(block.timestamp >= groups[groupId].biddingTimestamp - 30 minutes, "Window not yet open");
+        groups[groupId].phase = Phase.Deposit;
+        emit PhaseTransition(groupId, Phase.Deposit);
+    }
 
-        uint256 pot = TOTAL_USERS * MONTHLY_CONTRIBUTION;
-        uint256 payout = pot - maxDiscount;
-        // The maxDiscount is implicitly "distributed" as everyone else paid less or 
-        // in this simplified model, the winner just takes less and the difference 
-        // stays in the vault for future yield/distribution.
+    function startRound1(uint256 groupId) external {
+        require(groups[groupId].phase == Phase.Deposit, "Must be in deposit phase");
+        groups[groupId].phase = Phase.BiddingR1;
+        emit PhaseTransition(groupId, Phase.BiddingR1);
+    }
+
+    function submitBid(uint256 groupId, uint256 discount) external onlyGroupMember(groupId) nonReentrant {
+        GyeGroup storage group = groups[groupId];
+        require(group.phase == Phase.BiddingR1 || group.phase == Phase.FinalChallenge, "Bidding not active");
+        require(!group.hasWon[msg.sender], "User already won a round");
+        require(discount > group.highestBid, "Bid too low");
+
+        group.highestBidValue = discount; // Internal tracking
+        group.highestBidder = msg.sender;
+        group.highestBid = discount;
+
+        emit BidPlaced(groupId, msg.sender, discount);
+    }
+
+    function endRound1(uint256 groupId) external {
+        GyeGroup storage group = groups[groupId];
+        require(group.phase == Phase.BiddingR1, "Not in Round 1");
+        group.phase = Phase.Voting;
+        group.votingEndTime = block.timestamp + 5 minutes;
+        emit PhaseTransition(groupId, Phase.Voting);
+    }
+
+    function voteSatisfaction(uint256 groupId, bool isSatisfied) external onlyGroupMember(groupId) {
+        GyeGroup storage group = groups[groupId];
+        require(group.phase == Phase.Voting, "Not in voting phase");
+        require(block.timestamp <= group.votingEndTime, "Voting ended");
         
-        emit WinnerSelected(currentRoundId, winner, maxDiscount, payout);
-        currentRoundId++;
+        group.satisfactionVotes[msg.sender] = isSatisfied;
+        if (isSatisfied) group.positiveVotes++;
+
+        // If all members voted or timeout
+        if (group.positiveVotes == group.members.length) {
+            _finalizeRound(groupId);
+        }
     }
 
-    function getRoundWinner(uint256 roundId) external view returns (address, uint256) {
-        return (roundBids[roundId].winner, roundBids[roundId].maxDiscount);
+    function transitionAfterVoting(uint256 groupId) external {
+        GyeGroup storage group = groups[groupId];
+        require(group.phase == Phase.Voting, "Not in voting phase");
+        require(block.timestamp > group.votingEndTime, "Wait for timeout");
+
+        if (group.positiveVotes == group.members.length) {
+            _finalizeRound(groupId);
+        } else {
+            group.phase = Phase.FinalChallenge;
+            emit PhaseTransition(groupId, Phase.FinalChallenge);
+        }
     }
+
+    function finalizeFinalChallenge(uint256 groupId) external {
+        require(groups[groupId].phase == Phase.FinalChallenge, "Not in challenge phase");
+        _finalizeRound(groupId);
+    }
+
+    function _finalizeRound(uint256 groupId) internal {
+        GyeGroup storage group = groups[groupId];
+        address winner = group.highestBidder;
+        uint256 discount = group.highestBid;
+        uint256 pot = group.members.length * group.monthlyContribution;
+        uint256 payout = pot - discount;
+
+        group.hasWon[winner] = true;
+        group.phase = Phase.Completed;
+
+        uint256 yieldPerMember = discount / (group.members.length - 1);
+        
+        emit WinnerSelected(groupId, winner, payout, yieldPerMember);
+        emit PhaseTransition(groupId, Phase.Completed);
+    }
+
+    // Helper for frontend state tracking
+    uint256 private highestBidValue; 
 }
+
