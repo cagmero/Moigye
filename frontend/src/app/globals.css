@@ -1,35 +1,55 @@
 @import "tailwindcss";
 
 @theme {
-  --color-white: #ffffff;
-  --color-slate-200: #e2e8f0;
-  --color-blue-900: #1e3a8a;
-  --color-blue-800: #1e40af;
+  --color-platinum: #FAFAFA;
+  --color-zinc-50: #fafafa;
   --color-slate-900: #0f172a;
+  --color-slate-500: #64748b;
+  --color-blue-900: #1e3a8a;
+
+  --shadow-premium: 0 8px 30px rgb(0, 0, 0, 0.04);
+  --font-inter: 'Inter', sans-serif;
 }
 
 :root {
-  --background: #f8fafc;
-  /* slate-50 */
+  --background: #FAFAFA;
   --foreground: #0f172a;
-  /* slate-900 */
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-inter);
   -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
 }
 
-@utility glass-card {
-  @apply bg-white/70 backdrop-blur-md border border-slate-200/50 shadow-sm rounded-2xl;
+@utility glass-morphism {
+  @apply bg-white/70 backdrop-blur-xl border border-slate-200/50 shadow-premium;
+}
+
+@utility mesh-gradient {
+  background: radial-gradient(at 0% 0%, rgba(255, 182, 193, 0.15) 0%, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(255, 218, 185, 0.15) 0%, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(135, 206, 235, 0.1) 0%, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(221, 160, 221, 0.1) 0%, transparent 50%);
+  background-color: white;
 }
 
 @utility premium-button {
-  @apply bg-blue-900 text-white px-5 py-2.5 rounded-xl font-medium transition-all hover:bg-blue-800 active:scale-95 shadow-md shadow-blue-900/10;
+  @apply bg-slate-900 text-white px-8 py-3 rounded-full font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-slate-900/10;
 }
 
 @utility secondary-button {
-  @apply bg-white text-slate-900 border border-slate-200 px-5 py-2.5 rounded-xl font-medium transition-all hover:bg-slate-50 active:scale-95 shadow-sm;
+  @apply bg-white/80 backdrop-blur-md text-slate-900 border border-slate-200/50 px-8 py-3 rounded-full font-bold transition-all hover:bg-white hover:shadow-premium active:scale-[0.98];
+}
+
+@layer base {
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-tighter font-bold;
+  }
 }

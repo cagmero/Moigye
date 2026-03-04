@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Search, Filter, ArrowUpDown, DollarSign, Users, Calendar, ArrowRight, Tag } from "lucide-react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, Filter, ArrowUpDown, DollarSign, Users, Calendar, ArrowRight, Globe } from "lucide-react";
 
 interface GyeGroup {
     groupId: number;
@@ -15,7 +16,7 @@ interface GyeGroup {
 }
 
 export default function DiscoveryExplorer({ onBack }: { onBack: () => void }) {
-    const [groups, setGroups] = useState<GyeGroup[]>([
+    const [groups] = useState<GyeGroup[]>([
         { groupId: 1, moderator: "0x123...456", currentParticipants: 3, maxParticipants: 10, fixedDeposit: 500, totalPotAmount: 1500, biddingDate: Date.now() + 86400000, isPublic: true },
         { groupId: 2, moderator: "0x789...012", currentParticipants: 8, maxParticipants: 20, fixedDeposit: 100, totalPotAmount: 800, biddingDate: Date.now() + 172800000, isPublic: true },
         { groupId: 3, moderator: "0xabc...def", currentParticipants: 5, maxParticipants: 5, fixedDeposit: 1000, totalPotAmount: 5000, biddingDate: Date.now() + 43200000, isPublic: true },
@@ -37,104 +38,126 @@ export default function DiscoveryExplorer({ onBack }: { onBack: () => void }) {
         });
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Search & Filter Bar */}
-            <div className="glass-card p-6 flex flex-col md:flex-row gap-6 items-center">
-                <div className="flex-1 relative w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search by Group ID or Moderator..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-12 pr-4 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:border-blue-900 transition-all font-medium"
-                    />
-                </div>
+        <div className="max-w-7xl mx-auto px-6 py-10 space-y-12">
+            <div className="flex items-center justify-between">
+                <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Public Explorer</h2>
+                <button
+                    onClick={onBack}
+                    className="group flex items-center gap-2 text-xs font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest transition-colors"
+                >
+                    <ArrowRight className="w-4 h-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
+                    Lobby Hub
+                </button>
+            </div>
 
-                <div className="flex gap-4 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-48">
-                        <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <select
-                            value={filterDeposit}
-                            onChange={(e) => setFilterDeposit(parseInt(e.target.value))}
-                            className="w-full pl-10 pr-4 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:border-blue-900 transition-all appearance-none font-bold text-sm text-slate-600"
-                        >
-                            <option value="0">All Deposits</option>
-                            <option value="100">$100+</option>
-                            <option value="500">$500+</option>
-                            <option value="1000">$1000+</option>
-                        </select>
+            {/* Sticky Filter Bar */}
+            <div className="sticky top-28 z-40">
+                <div className="glass-morphism p-2 rounded-full flex flex-col md:flex-row items-center gap-2">
+                    <div className="flex-1 relative w-full">
+                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
+                        <input
+                            type="text"
+                            placeholder="Search moderator address..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-16 pr-6 py-4 bg-transparent rounded-full outline-none font-bold text-slate-900 placeholder:text-slate-300"
+                        />
                     </div>
 
-                    <div className="relative flex-1 md:w-48">
-                        <ArrowUpDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as any)}
-                            className="w-full pl-10 pr-4 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:border-blue-900 transition-all appearance-none font-bold text-sm text-slate-600"
-                        >
-                            <option value="date">Bidding Date</option>
-                            <option value="pot">Total Pot Size</option>
-                            <option value="members">Fill Rate</option>
-                        </select>
+                    <div className="flex gap-2 w-full md:w-auto p-1">
+                        <div className="relative">
+                            <select
+                                value={filterDeposit}
+                                onChange={(e) => setFilterDeposit(parseInt(e.target.value))}
+                                className="pl-6 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:border-slate-300 transition-all appearance-none font-black text-xs uppercase tracking-widest text-slate-600 cursor-pointer"
+                            >
+                                <option value="0">All Deposits</option>
+                                <option value="500">Min $500</option>
+                                <option value="1000">Min $1k</option>
+                            </select>
+                        </div>
+
+                        <div className="relative">
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value as any)}
+                                className="pl-6 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:border-slate-300 transition-all appearance-none font-black text-xs uppercase tracking-widest text-slate-600 cursor-pointer"
+                            >
+                                <option value="date">Sort By Date</option>
+                                <option value="pot">Sort By Pot</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredGroups.map((group) => (
-                    <div key={group.groupId} className="group glass-card p-6 space-y-6 hover:shadow-xl transition-all border-b-4 border-b-transparent hover:border-b-blue-900/10">
-                        <div className="flex justify-between items-start">
-                            <div className="bg-blue-50 text-blue-900 px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase">
-                                Group #{group.groupId}
-                            </div>
-                            {group.currentParticipants === group.maxParticipants ? (
-                                <span className="text-xs font-bold text-rose-500 uppercase tracking-widest">Full</span>
-                            ) : (
-                                <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                                    Available
-                                </span>
-                            )}
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="flex items-end gap-1">
-                                <span className="text-3xl font-black text-slate-900">${group.fixedDeposit}</span>
-                                <span className="text-sm font-bold text-slate-400 mb-1.5 uppercase tracking-tighter">Fixed Deposit</span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 bg-slate-50 rounded-xl space-y-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Participants</p>
-                                    <p className="text-sm font-bold text-slate-900">{group.currentParticipants}/{group.maxParticipants}</p>
-                                </div>
-                                <div className="p-3 bg-slate-50 rounded-xl space-y-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Pot</p>
-                                    <p className="text-sm font-bold text-blue-900">${group.totalPotAmount}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                                <Calendar className="w-3.5 h-3.5" />
-                                Bidding starts {new Date(group.biddingDate).toLocaleDateString()}
-                            </div>
-                        </div>
-
-                        <button
-                            disabled={group.currentParticipants === group.maxParticipants}
-                            className="w-full premium-button py-4 font-black flex items-center justify-center gap-2 group-hover:gap-3 transition-all disabled:opacity-50 disabled:grayscale"
+            <motion.div
+                layout
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            >
+                <AnimatePresence>
+                    {filteredGroups.map((group) => (
+                        <motion.div
+                            key={group.groupId}
+                            layout
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            whileHover={{ y: -8 }}
+                            className="group bg-white p-8 rounded-[2.5rem] border border-slate-200/50 shadow-premium relative overflow-hidden flex flex-col justify-between h-[420px]"
                         >
-                            Quick Join <ArrowRight className="w-4 h-4" />
-                        </button>
-                    </div>
-                ))}
-            </div>
+                            {/* Mesh Accent */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-50 to-pink-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
-            <button onClick={onBack} className="text-slate-400 hover:text-slate-900 font-bold flex items-center gap-2 pt-8">
-                <ArrowRight className="w-4 h-4 rotate-180" /> Back to Lobby Hub
-            </button>
+                            <div className="space-y-6 relative z-10">
+                                <div className="flex justify-between items-start">
+                                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-900 border border-slate-100">
+                                        <Globe className="w-6 h-6" />
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Group ID</p>
+                                        <p className="text-xl font-black text-slate-900 tracking-tighter">#{group.groupId}</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Fixed Deposit</p>
+                                    <p className="text-5xl font-black text-slate-900 tracking-tighter">${group.fixedDeposit}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Pot</p>
+                                        <p className="text-lg font-black text-indigo-600">${group.totalPotAmount}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Fill Rate</p>
+                                        <div className="flex items-end gap-1">
+                                            <p className="text-lg font-black text-slate-900">{group.currentParticipants}</p>
+                                            <p className="text-xs font-bold text-slate-400 mb-0.5">/ {group.maxParticipants}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6 relative z-10 pt-8 border-t border-slate-50">
+                                <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                    <Calendar className="w-4 h-4 text-slate-300" />
+                                    Starts {new Date(group.biddingDate).toLocaleDateString()}
+                                </div>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    className="w-full premium-button py-4 text-sm"
+                                >
+                                    Request Entry
+                                </motion.button>
+                            </div>
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
+            </motion.div>
         </div>
     );
 }
