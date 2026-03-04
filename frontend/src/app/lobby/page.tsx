@@ -14,12 +14,12 @@ const containerVariants = {
             staggerChildren: 0.1
         }
     }
-};
+} as const;
 
 const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
-};
+} as const;
 
 export default function LobbyPage() {
     const [view, setView] = useState<"landing" | "create" | "discover" | "moderate">("landing");

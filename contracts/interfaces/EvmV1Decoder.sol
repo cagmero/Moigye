@@ -46,15 +46,15 @@ library EvmV1Decoder {
 
     struct DecodedTransactionType0 { CommonTxFields commonTx; LegacyFields type0; ReceiptFields receipt; }
 
-    // ---------- Public utils ----------
-    function getTransactionType(bytes memory encodedTx) public pure returns (uint8 txType) {
+    // ---------- Internal utils ----------
+    function getTransactionType(bytes memory encodedTx) internal pure returns (uint8 txType) {
         (txType, ) = abi.decode(encodedTx, (uint8, bytes[]));
     }
 
-    function isValidTransactionType(uint8 txType) public pure returns (bool) { return txType <= 4; }
+    function isValidTransactionType(uint8 txType) internal pure returns (bool) { return txType <= 4; }
 
     function getLogsByEventSignature(ReceiptFields memory receipt, bytes32 eventSignature)
-        public pure returns (LogEntry[] memory)
+        internal pure returns (LogEntry[] memory)
     {
         uint256 n;
         for (uint256 i; i < receipt.receiptLogs.length; i++) {
@@ -70,7 +70,7 @@ library EvmV1Decoder {
         return out_;
     }
 
-    function decodeReceiptFields(bytes memory chunk) public pure returns (ReceiptFields memory) {
+    function decodeReceiptFields(bytes memory chunk) internal pure returns (ReceiptFields memory) {
         require(chunk.length > 0, "EvmV1Decoder: Empty");
         uint8 txType = getTransactionType(chunk);
         return _decodeReceiptChunk(chunk, txType);

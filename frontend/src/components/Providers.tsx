@@ -2,6 +2,7 @@
 
 import { PrivyProvider } from "@privy-io/react-auth";
 import { defineChain } from "viem";
+import { sepolia } from "viem/chains";
 import { Shield } from "lucide-react";
 
 const creditcoinTestnet = defineChain({
@@ -65,7 +66,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                     accentColor: "#0F172A",
                     showWalletLoginFirst: false,
                 },
-                supportedChains: [creditcoinTestnet],
+                supportedChains: [creditcoinTestnet, sepolia],
                 defaultChain: creditcoinTestnet,
                 embeddedWallets: {
                     ethereum: {

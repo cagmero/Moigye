@@ -79,7 +79,6 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
         require(!group.hasWon[msg.sender], "User already won a round");
         require(discount > group.highestBid, "Bid too low");
 
-        group.highestBidValue = discount; // Internal tracking
         group.highestBidder = msg.sender;
         group.highestBid = discount;
 
