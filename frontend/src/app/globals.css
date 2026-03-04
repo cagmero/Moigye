@@ -1,10 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-white: #ffffff;
+  --color-slate-200: #e2e8f0;
+  --color-blue-900: #1e3a8a;
+  --color-blue-800: #1e40af;
+  --color-slate-900: #0f172a;
+}
 
 :root {
-  --background: #f8fafc; /* slate-50 */
-  --foreground: #0f172a; /* slate-900 */
+  --background: #f8fafc;
+  /* slate-50 */
+  --foreground: #0f172a;
+  /* slate-900 */
 }
 
 body {
@@ -14,16 +22,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-@layer components {
-  .glass-card {
-    @apply bg-white/70 backdrop-blur-md border border-slate-200/50 shadow-sm rounded-2xl;
-  }
-  
-  .premium-button {
-    @apply bg-blue-900 text-white px-5 py-2.5 rounded-xl font-medium transition-all hover:bg-blue-800 active:scale-95 shadow-md shadow-blue-900/10;
-  }
+@utility glass-card {
+  @apply bg-white/70 backdrop-blur-md border border-slate-200/50 shadow-sm rounded-2xl;
+}
 
-  .secondary-button {
-    @apply bg-white text-slate-900 border border-slate-200 px-5 py-2.5 rounded-xl font-medium transition-all hover:bg-slate-50 active:scale-95 shadow-sm;
-  }
+@utility premium-button {
+  @apply bg-blue-900 text-white px-5 py-2.5 rounded-xl font-medium transition-all hover:bg-blue-800 active:scale-95 shadow-md shadow-blue-900/10;
+}
+
+@utility secondary-button {
+  @apply bg-white text-slate-900 border border-slate-200 px-5 py-2.5 rounded-xl font-medium transition-all hover:bg-slate-50 active:scale-95 shadow-sm;
 }
