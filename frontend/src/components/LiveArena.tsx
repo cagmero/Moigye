@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Gavel, Trophy, User, ArrowUpRight, CheckCircle2, XCircle, DollarSign } from "lucide-react";
+import { useAccount } from "wagmi";
+import { supabase } from "@/utils/supabaseClient";
 
 interface Bid {
     bidder: string;
@@ -9,30 +11,69 @@ interface Bid {
 }
 
 export default function LiveArena({ groupId }: { groupId: number }) {
-    const [bids, setBids] = useState<Bid[]>([
-        { bidder: "0x123...456", amount: 45 },
-        { bidder: "0x789...012", amount: 32 },
-        { bidder: "0xabc...def", amount: 15 },
-    ]);
+    const [bids, setBids] = useState<Bid[]>([]);
     const [myBid, setMyBid] = useState("");
     const [phase, setPhase] = useState("BiddingR1"); // BiddingR1, Voting, Finalchallenge, Completed
     const [showSatisfaction, setShowSatisfaction] = useState(false);
 
-    // In real implementation, use useWatchContractEvent here
-    // For demo, we simulate a bid every few seconds
+    // Initial fetch and Realtime subscription
     useEffect(() => {
-        if (phase === "BiddingR1" && bids.length < 6) {
-            const timer = setTimeout(() => {
-                setBids(prev => [...prev, { bidder: `0x${Math.random().toString(16).slice(2, 5)}...`, amount: prev[0].amount + 5 }].sort((a, b) => b.amount - a.amount));
-            }, 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [bids, phase]);
+        const fetchBids = async () => {
+            const { data, error } = await supabase
+                .from('live_bids')
+                .select('wallet_address, discount_amount')
+                .eq('group_id', groupId)
+                .order('discount_amount', { ascending: false });
 
-    const handlePlaceBid = () => {
-        if (!myBid) return;
+            if (data) {
+                setBids(data.map(b => ({ bidder: b.wallet_address, amount: Number(b.discount_amount) })));
+            }
+        };
+
+        fetchBids();
+
+        const channel = supabase
+            .channel(`live-bids-${groupId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'live_bids',
+                    filter: `group_id=eq.${groupId}`
+                },
+                (payload) => {
+                    const newBid = {
+                        bidder: payload.new.wallet_address,
+                        amount: Number(payload.new.discount_amount)
+                    };
+                    setBids(prev => [newBid, ...prev].sort((a, b) => b.amount - a.amount));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [groupId]);
+
+    const { address } = useAccount();
+
+    const handlePlaceBid = async () => {
+        if (!myBid || !address) return;
         const amount = parseInt(myBid);
-        setBids(prev => [{ bidder: "YOU (0x742...)", amount }, ...prev].sort((a, b) => b.amount - a.amount));
+
+        const { error } = await supabase
+            .from('live_bids')
+            .insert([
+                {
+                    group_id: groupId,
+                    wallet_address: address,
+                    discount_amount: amount
+                }
+            ]);
+
+        if (error) console.error("Error placing bid:", error);
         setMyBid("");
     };
 

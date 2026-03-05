@@ -1,49 +1,87 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title ScoreManager
- * @dev Manages user credit scores for the Moigye protocol.
- * Residents gain points for on-time contributions and lose points for defaults.
+ * @dev Manages user credit scores and non-transferable credit records for the Moigye protocol.
  */
-contract ScoreManager is Ownable {
-    uint256 public constant MIN_SCORE = 300;
-    uint256 public constant MAX_SCORE = 850;
-    
-    // Exact specifications: +10 for completed rounds, -100 for defaults
-    int256 public constant ROUND_COMPLETION_BONUS = 10;
-    int256 public constant DEFAULT_PENALTY = -100;
+contract ScoreManager is ERC721, Ownable {
+    uint256 public constant DEFAULT_SCORE = 300;
+    uint256 private _nextTokenId;
+    address public gyeManager;
 
-    mapping(address => uint256) public scores;
+    mapping(address => uint256) public creditScores;
 
-    event ScoreUpdated(address indexed user, uint256 newScore, string reason);
+    event ScoreUpdated(address indexed user, uint256 newScore);
+    event CreditRecordMinted(address indexed user, uint256 tokenId);
 
-    constructor() Ownable(msg.sender) {}
+    modifier onlyGyeManager() {
+        require(msg.sender == gyeManager || msg.sender == owner(), "Caller is not authorized");
+        _;
+    }
 
+    constructor() ERC721("Moigye Credit Record", "MCR") Ownable(msg.sender) {
+        gyeManager = msg.sender; // Default to owner, can be updated later
+    }
+
+    /**
+     * @dev Set the GyeManager address that can update scores and mint NFTs.
+     */
+    function setGyeManager(address _gyeManager) external onlyOwner {
+        gyeManager = _gyeManager;
+    }
+
+    /**
+     * @dev Returns the credit score of a user. Returns DEFAULT_SCORE if not records exist.
+     */
     function getScore(address user) public view returns (uint256) {
-        uint256 score = scores[user];
-        if (score == 0) return 600; // Default starting score for ROSCA
+        uint256 score = creditScores[user];
+        if (score == 0) return DEFAULT_SCORE;
         return score;
     }
 
-    function recordRoundCompletion(address user) external onlyOwner {
-        updateScore(user, ROUND_COMPLETION_BONUS, "Round Completed");
-    }
-
-    function recordDefault(address user) external onlyOwner {
-        updateScore(user, DEFAULT_PENALTY, "Defaulted");
-    }
-
-    function updateScore(address user, int256 delta, string memory reason) public onlyOwner {
+    /**
+     * @dev Increases user score by 10 for successful round participation.
+     */
+    function recordSuccessfulPayment(address user) external onlyGyeManager {
         uint256 current = getScore(user);
-        int256 newScore = int256(current) + delta;
+        creditScores[user] = current + 10;
+        emit ScoreUpdated(user, creditScores[user]);
+    }
 
-        if (newScore < int256(MIN_SCORE)) newScore = int256(MIN_SCORE);
-        if (newScore > int256(MAX_SCORE)) newScore = int256(MAX_SCORE);
+    /**
+     * @dev Slashes user score by 150 for defaulting.
+     */
+    function recordDefault(address user) external onlyGyeManager {
+        uint256 current = getScore(user);
+        if (current > 150) {
+            creditScores[user] = current - 150;
+        } else {
+            creditScores[user] = 0;
+        }
+        emit ScoreUpdated(user, creditScores[user]);
+    }
 
-        scores[user] = uint256(newScore);
-        emit ScoreUpdated(user, uint256(newScore), reason);
+    /**
+     * @dev Mints a non-transferable credit record NFT for the user.
+     */
+    function mintCreditRecord(address user) external onlyGyeManager {
+        uint256 tokenId = _nextTokenId++;
+        _safeMint(user, tokenId);
+        emit CreditRecordMinted(user, tokenId);
+    }
+
+    /**
+     * @dev Overridden to prevent transfers, making the NFT soulbound.
+     */
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+        address from = _ownerOf(tokenId);
+        if (from != address(0) && to != address(0)) {
+            revert("MCR: Token is non-transferable");
+        }
+        return super._update(to, tokenId, auth);
     }
 }
