@@ -3,13 +3,20 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Vote, Shield, FileText, ArrowUpRight, Lock, Users } from "lucide-react";
+import SplitText from "@/components/SplitText";
 
 export default function GovernancePage() {
     return (
         <div className="max-w-7xl mx-auto px-6 py-12 space-y-12 animate-in fade-in duration-700">
             <div className="space-y-4">
-                <h1 className="text-6xl font-black text-slate-900 tracking-tighter">Governance.</h1>
-                <p className="text-xl text-slate-500 font-medium">Shape the future of the Moigye protocol.</p>
+                <h1 className="text-6xl font-black text-slate-900 tracking-tighter">
+                    <SplitText
+                        text="Governance."
+                        delay={30}
+                        duration={0.8}
+                    />
+                </h1>
+                <p className="text-xl text-slate-500 font-medium">Shape the future of social finance the Moigye protocol.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

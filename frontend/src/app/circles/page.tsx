@@ -6,6 +6,8 @@ import { Users, Plus, ArrowRight, Compass, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { GYE_MANAGER_CONTRACT } from "@/lib/contracts";
+import SpotlightCard from "@/components/SpotlightCard";
+import SplitText from "@/components/SplitText";
 
 const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -89,7 +91,11 @@ export default function CirclesPage() {
                 <div className="space-y-1">
                     <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                         <Users className="w-10 h-10 text-blue-600" />
-                        Your Circles
+                        <SplitText
+                            text="Your Circles"
+                            delay={30}
+                            duration={0.8}
+                        />
                     </h1>
                     <p className="text-slate-500 font-medium">Manage your active pool participations.</p>
                 </div>
@@ -112,13 +118,9 @@ export default function CirclesPage() {
                 >
                     <AnimatePresence mode="popLayout">
                         {myCircles.map((circle) => (
-                            <motion.div
+                            <SpotlightCard
                                 key={circle.id}
-                                layout
-                                variants={itemVariants}
-                                initial="hidden"
-                                animate="visible"
-                                exit={{ opacity: 0, scale: 0.9 }}
+                                spotlightColor="rgba(37, 99, 235, 0.15)"
                                 className="bg-white p-8 rounded-[2.5rem] space-y-6 hover:-translate-y-2 transition-all cursor-pointer group border border-slate-200/60 shadow-premium relative overflow-hidden"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -154,7 +156,7 @@ export default function CirclesPage() {
                                         <ArrowRight className="w-4 h-4" />
                                     </div>
                                 </Link>
-                            </motion.div>
+                            </SpotlightCard>
                         ))}
                     </AnimatePresence>
                 </motion.div>

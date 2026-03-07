@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, Filter, ArrowRight, ArrowUpDown, Globe, Shield, Users, DollarSign, Calendar, Loader2 } from "lucide-react";
+import SplitText from "@/components/SplitText";
 import DiscoveryExplorer from "@/components/DiscoveryExplorer";
 import ModeratorPanel from "@/components/ModeratorPanel";
+import SpotlightCard from "@/components/SpotlightCard";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { GYE_MANAGER_CONTRACT } from "@/lib/contracts";
 
@@ -75,8 +77,20 @@ export default function LobbyPage() {
                         {/* Hero */}
                         <motion.div className="text-center space-y-8" variants={itemVariants}>
                             <h1 className="text-7xl md:text-8xl font-black text-slate-900 leading-[1.1] tracking-[-0.05em]">
-                                The Future of <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-slate-900 to-indigo-600">Social Finance.</span>
+                                <SplitText
+                                    text="The Future of social finance"
+                                    className="block"
+                                    delay={30}
+                                    duration={0.8}
+                                    splitType="chars"
+                                />
+                                <SplitText
+                                    text="Social Finance."
+                                    className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-slate-900 to-indigo-600 block"
+                                    delay={30}
+                                    duration={0.8}
+                                    splitType="chars"
+                                />
                             </h1>
                             <p className="text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
                                 Connect deeply through decentralized Gye.
@@ -84,58 +98,66 @@ export default function LobbyPage() {
                             </p>
 
                             <div className="flex justify-center gap-6 pt-8">
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => setView("create")}
-                                    className="premium-button text-lg px-10 py-5"
-                                >
-                                    Create Protocol
-                                </motion.button>
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => setView("discover")}
-                                    className="secondary-button text-lg px-10 py-5"
-                                >
-                                    Explore Pools
-                                </motion.button>
+                                <SpotlightCard spotlightColor="rgba(37, 99, 235, 0.2)" className="p-0 border-0 bg-transparent rounded-2xl overflow-visible">
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setView("create")}
+                                        className="premium-button text-lg px-10 py-5"
+                                    >
+                                        Create Protocol
+                                    </motion.button>
+                                </SpotlightCard>
+                                <SpotlightCard spotlightColor="rgba(71, 85, 105, 0.2)" className="p-0 border-0 bg-transparent rounded-2xl overflow-visible">
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setView("discover")}
+                                        className="secondary-button text-lg px-10 py-5"
+                                    >
+                                        Explore Pools
+                                    </motion.button>
+                                </SpotlightCard>
                             </div>
                         </motion.div>
 
                         {/* Quick Actions Grid */}
                         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div
-                                onClick={() => setView("create")}
+                            <SpotlightCard
+                                spotlightColor="rgba(15, 23, 42, 0.1)"
                                 className="group p-12 bg-white border border-slate-200/50 rounded-[2.5rem] shadow-premium hover:-translate-y-2 transition-all duration-500 cursor-pointer overflow-hidden relative"
                             >
-                                <div className="absolute top-0 right-0 p-12 opacity-[0.05] group-hover:scale-110 transition-transform">
-                                    <Plus className="w-32 h-32 text-slate-900" />
-                                </div>
-                                <div className="space-y-6 relative z-10">
-                                    <div className="w-16 h-16 bg-slate-900 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
-                                        <Plus className="w-8 h-8" />
+                                <div onClick={() => setView("create")}>
+                                    <div className="absolute top-0 right-0 p-12 opacity-[0.05] group-hover:scale-110 transition-transform">
+                                        <Plus className="w-32 h-32 text-slate-900" />
                                     </div>
-                                    <h2 className="text-4xl font-black text-slate-900">Start Circle</h2>
-                                    <p className="text-lg text-slate-500 font-medium">Deploy a private or public ROSCA group on-chain.</p>
+                                    <div className="space-y-6 relative z-10">
+                                        <div className="w-16 h-16 bg-slate-900 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
+                                            <Plus className="w-8 h-8" />
+                                        </div>
+                                        <h2 className="text-4xl font-black text-slate-900">Start Circle</h2>
+                                        <p className="text-lg text-slate-500 font-medium">Deploy a private or public ROSCA group on-chain.</p>
+                                    </div>
                                 </div>
-                            </div>
+                            </SpotlightCard>
 
-                            <div
-                                onClick={() => setView("discover")}
+                            <SpotlightCard
+                                spotlightColor="rgba(37, 99, 235, 0.1)"
                                 className="group p-12 bg-white border border-slate-200/50 rounded-[2.5rem] shadow-premium hover:-translate-y-2 transition-all duration-500 cursor-pointer overflow-hidden relative"
                             >
-                                <div className="absolute top-0 right-0 p-12 opacity-[0.05] group-hover:scale-110 transition-transform">
-                                    <Globe className="w-32 h-32 text-slate-900" />
-                                </div>
-                                <div className="space-y-6 relative z-10">
-                                    <div className="w-16 h-16 bg-blue-50/50 border border-blue-100 rounded-3xl flex items-center justify-center text-blue-900 shadow-sm">
-                                        <Search className="w-8 h-8" />
+                                <div onClick={() => setView("discover")}>
+                                    <div className="absolute top-0 right-0 p-12 opacity-[0.05] group-hover:scale-110 transition-transform">
+                                        <Globe className="w-32 h-32 text-slate-900" />
                                     </div>
-                                    <h2 className="text-4xl font-black text-slate-900">Find Pools</h2>
-                                    <p className="text-lg text-slate-500 font-medium">Join vetted public matchmaking groups instantly.</p>
+                                    <div className="space-y-6 relative z-10">
+                                        <div className="w-16 h-16 bg-blue-50/50 border border-blue-100 rounded-3xl flex items-center justify-center text-blue-900 shadow-sm">
+                                            <Search className="w-8 h-8" />
+                                        </div>
+                                        <h2 className="text-4xl font-black text-slate-900">Find Pools</h2>
+                                        <p className="text-lg text-slate-500 font-medium">Join vetted public matchmaking groups instantly.</p>
+                                    </div>
                                 </div>
-                            </div>
+                            </SpotlightCard>
                         </motion.div>
 
                         <motion.div variants={itemVariants} className="text-center">

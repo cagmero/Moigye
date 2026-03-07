@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Shield, TrendingUp, Zap, History, LayoutGrid, ArrowUpRight, CheckCircle2, Coins } from "lucide-react";
+import SpotlightCard from "@/components/SpotlightCard";
+import SplitText from "@/components/SplitText";
 
 export default function DashboardPage() {
     const [score, setScore] = useState(0);
@@ -22,7 +24,13 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-6 py-12 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex items-end justify-between">
                 <div className="space-y-4">
-                    <h1 className="text-6xl font-black text-slate-900 tracking-tighter">Your Reputation.</h1>
+                    <h1 className="text-6xl font-black text-slate-900 tracking-tighter">
+                        <SplitText
+                            text="Your Reputation."
+                            delay={30}
+                            duration={0.8}
+                        />
+                    </h1>
                     <p className="text-xl text-slate-500 font-medium">On-chain credit and protocol statistics.</p>
                 </div>
             </div>
@@ -83,15 +91,15 @@ export default function DashboardPage() {
                 {/* Stats Grid */}
                 <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-8">
                     {[
-                        { label: "Total Staked", val: "12,450 CTC", icon: <Coins className="w-6 h-6" />, color: "bg-blue-50 text-blue-900" },
-                        { label: "Gye Rounds", val: "14 Won", icon: <CheckCircle2 className="w-6 h-6" />, color: "bg-emerald-50 text-emerald-600" },
-                        { label: "Protocol Rank", val: "#142nd", icon: <TrendingUp className="w-6 h-6" />, color: "bg-indigo-50 text-indigo-900" },
-                        { label: "Trust Nodes", val: "8 Active", icon: <Zap className="w-6 h-6" />, color: "bg-orange-50 text-orange-600" }
+                        { label: "Total Staked", val: "12,450 CTC", icon: <Coins className="w-6 h-6" />, color: "bg-blue-50 text-blue-900", spotlight: "rgba(30, 58, 138, 0.1)" },
+                        { label: "Gye Rounds", val: "14 Won", icon: <CheckCircle2 className="w-6 h-6" />, color: "bg-emerald-50 text-emerald-600", spotlight: "rgba(16, 185, 129, 0.1)" },
+                        { label: "Protocol Rank", val: "#142nd", icon: <TrendingUp className="w-6 h-6" />, color: "bg-indigo-50 text-indigo-900", spotlight: "rgba(79, 70, 229, 0.1)" },
+                        { label: "Trust Nodes", val: "8 Active", icon: <Zap className="w-6 h-6" />, color: "bg-orange-50 text-orange-600", spotlight: "rgba(249, 115, 22, 0.1)" }
                     ].map((stat, i) => (
-                        <motion.div
+                        <SpotlightCard
                             key={i}
-                            whileHover={{ y: -4 }}
-                            className="glass-morphism rounded-[2.5rem] p-8 flex flex-col justify-between space-y-6 bg-white border border-slate-100/50"
+                            spotlightColor={stat.spotlight}
+                            className="glass-morphism rounded-[2.5rem] p-8 flex flex-col justify-between space-y-6 bg-white border border-slate-100/50 hover:-translate-y-1 transition-transform"
                         >
                             <div className={`w-12 h-12 ${stat.color} rounded-2xl flex items-center justify-center shadow-sm`}>
                                 {stat.icon}
@@ -100,7 +108,7 @@ export default function DashboardPage() {
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{stat.label}</p>
                                 <p className="text-3xl font-black text-slate-900 tracking-tight">{stat.val}</p>
                             </div>
-                        </motion.div>
+                        </SpotlightCard>
                     ))}
 
                     {/* Large Staking CTA */}

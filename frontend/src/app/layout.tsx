@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Geist } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Providers from "@/components/Providers";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 const inter = Inter({
   variable: "--font-inter",
@@ -11,7 +14,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Moigye | Premium ROSCA Protocol",
-  description: "The future of decentralized social finance.",
+  description: "The future of social finance.",
   icons: {
     icon: "/logo.svg",
   },
@@ -23,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={cn("font-sans", geist.variable)}>
       <body className={`${inter.variable} font-inter antialiased bg-[#FAFAFA]`}>
         <Providers>
           <Navbar />
