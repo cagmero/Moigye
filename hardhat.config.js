@@ -2,14 +2,16 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
 require("@nomicfoundation/hardhat-toolbox-mocha-ethers");
+require("@nomicfoundation/hardhat-ethers");
 require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 export default {
     solidity: {
         compilers: [
-            { version: "0.8.20", settings: { viaIR: true, optimizer: { enabled: true, runs: 200 } } },
-            { version: "0.8.23", settings: { viaIR: true, optimizer: { enabled: true, runs: 200 } } }
+            { version: "0.8.20", settings: { evmVersion: "cancun", viaIR: true, optimizer: { enabled: true, runs: 200 } } },
+            { version: "0.8.23", settings: { evmVersion: "cancun", viaIR: true, optimizer: { enabled: true, runs: 200 } } },
+            { version: "0.8.24", settings: { evmVersion: "cancun", viaIR: true, optimizer: { enabled: true, runs: 200 } } }
         ],
     },
     networks: {

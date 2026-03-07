@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Gavel, Trophy, User, ArrowUpRight, CheckCircle2, XCircle, DollarSign } from "lucide-react";
+import { Gavel, Trophy, User, ArrowUpRight, CheckCircle2, XCircle, DollarSign, ShieldCheck } from "lucide-react";
 import { useAccount } from "wagmi";
 import { supabase } from "@/utils/supabaseClient";
 
@@ -151,10 +151,31 @@ export default function LiveArena({ groupId }: { groupId: number }) {
                         <h3 className="text-xl font-bold text-slate-900">Current Winner</h3>
                         <p className="text-blue-900 font-mono font-bold mt-1">{bids[0]?.bidder}</p>
                     </div>
-                    <div className="w-full p-6 bg-slate-50 rounded-2xl border border-slate-100 italic">
-                        <p className="text-sm text-slate-500">Predicted Yield Distribution</p>
-                        <p className="text-2xl font-bold text-emerald-600 mt-1">+${((bids[0]?.amount || 0) / 9).toFixed(2)}</p>
-                        <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mt-1">Per Non-Winning Member</p>
+                    <div className="w-full space-y-4">
+                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                            <p className="text-sm text-slate-500 font-medium">Estimated Payout Breakdown</p>
+                            <div className="mt-4 space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Immediate (70%)</span>
+                                    <span className="text-lg font-black text-slate-900">${((bids[0]?.amount || 0) * 0.7).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Bond (30%)</span>
+                                    <span className="text-lg font-black text-blue-600">${((bids[0]?.amount || 0) * 0.3).toFixed(2)}</span>
+                                </div>
+                                <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                                    <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Total Pot</span>
+                                    <span className="text-xl font-black text-slate-900">${(bids[0]?.amount || 0).toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 text-left">
+                            <p className="text-[10px] text-blue-800 font-black uppercase tracking-[0.1em] leading-relaxed">
+                                <ShieldCheck className="w-3 h-3 inline mr-1 mb-0.5" />
+                                Anti-Default: Bond released after final round.
+                            </p>
+                        </div>
                     </div>
                     <button
                         onClick={() => setShowSatisfaction(true)}

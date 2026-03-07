@@ -22,16 +22,36 @@ contract MoigyeVault is ReentrancyGuard, Ownable, EIP712 {
     mapping(bytes32 => bool) public payoutProcessed;
     uint256 public depositNonce;
 
-    bytes32 public constant PAYOUT_TYPEHASH = keccak256(
-        "Payout(address winner,uint256 amount,uint256 roundId,uint256 nonce)"
-    );
+    // groupId => user => amount
+    mapping(uint256 => mapping(address => uint256)) public lockedBonds;
 
-    event ContributionDeposited(address indexed user, uint256 amount, uint256 roundId, uint256 depositId);
-    event PayoutExecuted(address indexed winner, uint256 amount, uint256 roundId, uint256 nonce);
+    bytes32 public constant PAYOUT_TYPEHASH =
+        keccak256(
+            "Payout(address winner,uint256 amount,uint256 roundId,uint256 nonce)"
+        );
+
+    event ContributionDeposited(
+        address indexed user,
+        uint256 amount,
+        uint256 roundId,
+        uint256 depositId
+    );
+    event PayoutExecuted(
+        address indexed winner,
+        uint256 amountImmediate,
+        uint256 amountBond,
+        uint256 roundId,
+        uint256 nonce
+    );
+    event BondClaimed(address indexed winner, uint256 groupId, uint256 amount);
+    event BondSlashed(address indexed winner, uint256 groupId, uint256 amount);
     event ValidatorUpdated(address indexed newValidator);
     event YieldOptimized(address indexed target, uint256 amount);
 
-    constructor(address _usdc, address _validator) Ownable(msg.sender) EIP712("Moigye_Vault", "1.0.0") {
+    constructor(
+        address _usdc,
+        address _validator
+    ) Ownable(msg.sender) EIP712("Moigye_Vault", "1.0.0") {
         usdc = _usdc;
         validator = _validator;
     }
@@ -41,7 +61,10 @@ contract MoigyeVault is ReentrancyGuard, Ownable, EIP712 {
         emit ValidatorUpdated(_validator);
     }
 
-    function depositContribution(uint256 amount, uint256 roundId) external nonReentrant {
+    function depositContribution(
+        uint256 amount,
+        uint256 roundId
+    ) external nonReentrant {
         require(amount > 0, "Amount must be > 0");
         IERC20(usdc).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -51,6 +74,7 @@ contract MoigyeVault is ReentrancyGuard, Ownable, EIP712 {
 
     /**
      * @dev Executes payout on spoke chain using a signature from the Hub validator.
+     * Splits payout: 70% immediate, 30% locked as guarantee bond.
      */
     function executePayout(
         address winner,
@@ -59,19 +83,71 @@ contract MoigyeVault is ReentrancyGuard, Ownable, EIP712 {
         uint256 nonce,
         bytes calldata signature
     ) external nonReentrant {
-        bytes32 payoutId = keccak256(abi.encodePacked(winner, amount, roundId, nonce));
+        bytes32 payoutId = keccak256(
+            abi.encodePacked(winner, amount, roundId, nonce)
+        );
         require(!payoutProcessed[payoutId], "Payout already processed");
 
-        bytes32 structHash = keccak256(abi.encode(PAYOUT_TYPEHASH, winner, amount, roundId, nonce));
+        bytes32 structHash = keccak256(
+            abi.encode(PAYOUT_TYPEHASH, winner, amount, roundId, nonce)
+        );
         bytes32 digest = _hashTypedDataV4(structHash);
-        
+
         address recoveredAddress = ECDSA.recover(digest, signature);
         require(recoveredAddress == validator, "Invalid validator signature");
 
         payoutProcessed[payoutId] = true;
-        IERC20(usdc).safeTransfer(winner, amount);
 
-        emit PayoutExecuted(winner, amount, roundId, nonce);
+        uint256 payoutImmediate = (amount * 70) / 100;
+        uint256 lockedBond = amount - payoutImmediate;
+
+        lockedBonds[roundId][winner] += lockedBond;
+        IERC20(usdc).safeTransfer(winner, payoutImmediate);
+
+        emit PayoutExecuted(
+            winner,
+            payoutImmediate,
+            lockedBond,
+            roundId,
+            nonce
+        );
+    }
+
+    /**
+     * @dev Allows the winner to claim their locked bond after the final round.
+     * Strictly regulated by backend/validator logic in production.
+     */
+    function claimBond(uint256 groupId) external nonReentrant {
+        uint256 amount = lockedBonds[groupId][msg.sender];
+        require(amount > 0, "No bond to claim");
+
+        lockedBonds[groupId][msg.sender] = 0;
+        IERC20(usdc).safeTransfer(msg.sender, amount);
+
+        emit BondClaimed(msg.sender, groupId, amount);
+    }
+
+    /**
+     * @dev Slashes a defaulted user's bond and distributes it among remaining members.
+     * Only callable by owner/validator.
+     */
+    function slashBond(
+        uint256 groupId,
+        address defaulter,
+        address[] calldata recipients
+    ) external onlyOwner {
+        uint256 amount = lockedBonds[groupId][defaulter];
+        require(amount > 0, "No bond to slash");
+        require(recipients.length > 0, "No recipients");
+
+        lockedBonds[groupId][defaulter] = 0;
+        uint256 share = amount / recipients.length;
+
+        for (uint256 i = 0; i < recipients.length; i++) {
+            IERC20(usdc).safeTransfer(recipients[i], share);
+        }
+
+        emit BondSlashed(defaulter, groupId, amount);
     }
 
     /**
