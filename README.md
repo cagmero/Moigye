@@ -33,6 +33,13 @@ Moigye (Korean for "gathering") is a decentralized, cross-chain Rotating Savings
 
 ## 🏁 Quick Start
 
+### Deployed Contracts (Creditcoin BUIDL-CTC Hackathon)
+- **GyeManager**: `0x5Ff0b1Ef155e127266cf1dCFb041aa32aB1d5829`
+- **BiddingEngine**: `0x0587000b1dDe351c6769A40e556F62C6066aF9d8`
+- **MoigyeVault (Sepolia)**: `0xf20ac2d8E81dd951987B661e40A3367705760431`
+- **ScoreManager**: `0xf20ac2d8E81dd951987B661e40A3367705760431`
+- **GyeStaking**: `0x04402E108411eC07F514839cAb4e72912Ad8B988`
+
 ### Smart Contracts
 1. Install dependencies: `pnpm install`
 2. Compile: `pnpm exec hardhat compile`

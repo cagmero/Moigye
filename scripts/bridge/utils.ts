@@ -1,5 +1,5 @@
 type ChainQuery = any;
-import { PROVER_ABI } from './constants/abi';
+import { PROVER_ABI } from './constants/abi.js';
 import { encodeAbiParameters, keccak256 } from 'viem';
 
 export const chainKeyConverter = (chainId: number): bigint => {

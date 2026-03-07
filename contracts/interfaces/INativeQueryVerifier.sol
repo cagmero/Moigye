@@ -17,6 +17,14 @@ interface INativeQueryVerifier {
         bytes32[] roots;
     }
 
+    function verify(
+        uint64 chainKey,
+        uint64 height,
+        bytes calldata encodedTransaction,
+        MerkleProof calldata merkleProof,
+        ContinuityProof calldata continuityProof
+    ) external returns (bool);
+
     function verifyAndEmit(
         uint64 chainKey,
         uint64 height,
@@ -27,7 +35,8 @@ interface INativeQueryVerifier {
 }
 
 library NativeQueryVerifierLib {
-    address constant PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000FD2;
+    address constant PRECOMPILE_ADDRESS =
+        0x0000000000000000000000000000000000000FD2;
 
     function getVerifier() internal pure returns (INativeQueryVerifier) {
         return INativeQueryVerifier(PRECOMPILE_ADDRESS);
@@ -36,11 +45,9 @@ library NativeQueryVerifierLib {
     /**
      * @notice Calculates the transaction index from the merkle proof path
      */
-    function _calculateTransactionIndex(INativeQueryVerifier.MerkleProofEntry[] memory proof)
-        internal
-        pure
-        returns (uint256 index)
-    {
+    function _calculateTransactionIndex(
+        INativeQueryVerifier.MerkleProofEntry[] memory proof
+    ) internal pure returns (uint256 index) {
         index = 0;
         // Iterate from root -> leaf
         for (uint256 i = proof.length; i > 0; i--) {

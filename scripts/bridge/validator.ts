@@ -12,9 +12,11 @@ const cc_next_testnet = {
     testnet: true,
 } as const;
 
+import { readFileSync } from 'fs';
+
 // ABIs
-const BiddingEngineABI = require('../../artifacts/contracts/BiddingEngine.sol/BiddingEngine.json').abi;
-const MoigyeVaultABI = require('../../artifacts/contracts/MoigyeVault.sol/MoigyeVault.json').abi;
+const BiddingEngineABI = JSON.parse(readFileSync(new URL('../../artifacts/contracts/BiddingEngine.sol/BiddingEngine.json', import.meta.url).pathname, 'utf-8')).abi;
+const MoigyeVaultABI = JSON.parse(readFileSync(new URL('../../artifacts/contracts/MoigyeVault.sol/MoigyeVault.json', import.meta.url).pathname, 'utf-8')).abi;
 
 // Addresses
 const BIDDING_ENGINE_ADDRESS = process.env.BIDDING_ENGINE_ADDRESS || "0x<YOUR_BIDDING_ENGINE_ADDRESS>";
