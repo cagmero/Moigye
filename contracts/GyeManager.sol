@@ -14,6 +14,10 @@ interface IBiddingEngine {
     ) external;
 }
 
+interface IScoreManager {
+    function getScore(address user) external view returns (uint256);
+}
+
 /**
  * @title GyeManager
  * @dev Hub chain (Creditcoin) contract for ROSCA state management and Lobby system.
@@ -27,6 +31,7 @@ contract GyeManager is Ownable {
         address[] members;
         address[] pendingRequests;
         uint256 fixedDeposit;
+        uint256 minScoreRequired;
         uint256 maxParticipants;
         uint256 biddingDate;
         bool isPublic;
@@ -40,12 +45,14 @@ contract GyeManager is Ownable {
         uint256 currentParticipants;
         uint256 maxParticipants;
         uint256 fixedDeposit;
+        uint256 minScoreRequired;
         uint256 totalPotAmount;
         uint256 biddingDate;
         bool isPublic;
     }
 
     IBiddingEngine public biddingEngine;
+    IScoreManager public scoreManager;
     uint256 public nextGroupId;
     mapping(uint256 => GyeGroup) public groups;
     mapping(bytes32 => bool) public processedTransactions;
@@ -70,21 +77,36 @@ contract GyeManager is Ownable {
     address constant NATIVE_VERIFIER =
         0x0000000000000000000000000000000000000FD2;
 
-    constructor(address _biddingEngine) Ownable(msg.sender) {
+    constructor(
+        address _biddingEngine,
+        address _scoreManager
+    ) Ownable(msg.sender) {
         biddingEngine = IBiddingEngine(_biddingEngine);
+        scoreManager = IScoreManager(_scoreManager);
+    }
+
+    function setScoreManager(address _scoreManager) external onlyOwner {
+        scoreManager = IScoreManager(_scoreManager);
     }
 
     function createGroup(
         bool _isPublic,
         uint256 _fixedDeposit,
+        uint256 _minScoreRequired,
         uint256 _maxParticipants,
         uint256 _biddingDate
     ) external {
+        require(
+            scoreManager.getScore(msg.sender) >= _minScoreRequired,
+            "Credit score too low to moderate"
+        );
+
         uint256 groupId = nextGroupId++;
         GyeGroup storage group = groups[groupId];
         group.groupId = groupId;
         group.moderator = msg.sender;
         group.fixedDeposit = _fixedDeposit;
+        group.minScoreRequired = _minScoreRequired;
         group.maxParticipants = _maxParticipants;
         group.biddingDate = _biddingDate;
         group.isPublic = _isPublic;
@@ -101,6 +123,10 @@ contract GyeManager is Ownable {
         require(group.isActive, "Group not active");
         require(group.isPublic, "Group is private");
         require(group.members.length < group.maxParticipants, "Group full");
+        require(
+            scoreManager.getScore(msg.sender) >= group.minScoreRequired,
+            "Credit score too low"
+        );
 
         for (uint256 i = 0; i < group.members.length; i++) {
             require(group.members[i] != msg.sender, "Already a member");
@@ -114,6 +140,10 @@ contract GyeManager is Ownable {
         GyeGroup storage group = groups[_groupId];
         require(group.isActive, "Group not active");
         require(!group.isPublic, "Group is public");
+        require(
+            scoreManager.getScore(msg.sender) >= group.minScoreRequired,
+            "Credit score too low"
+        );
 
         for (uint256 i = 0; i < group.members.length; i++) {
             require(group.members[i] != msg.sender, "Already a member");
@@ -196,6 +226,7 @@ contract GyeManager is Ownable {
                     currentParticipants: g.members.length,
                     maxParticipants: g.maxParticipants,
                     fixedDeposit: g.fixedDeposit,
+                    minScoreRequired: g.minScoreRequired,
                     totalPotAmount: g.members.length * g.fixedDeposit,
                     biddingDate: g.biddingDate,
                     isPublic: g.isPublic

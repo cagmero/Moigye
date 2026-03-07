@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Gavel, Trophy, User, ArrowUpRight, CheckCircle2, XCircle, DollarSign, ShieldCheck } from "lucide-react";
+import { useUserSync } from "@/hooks/useUserSync";
 import { useAccount } from "wagmi";
 import { supabase } from "@/utils/supabaseClient";
 
@@ -13,6 +14,7 @@ interface Bid {
 export default function LiveArena({ groupId }: { groupId: number }) {
     const [bids, setBids] = useState<Bid[]>([]);
     const [myBid, setMyBid] = useState("");
+    const { isBanned, loading: userSyncLoading } = useUserSync();
     const [phase, setPhase] = useState("BiddingR1"); // BiddingR1, Voting, Finalchallenge, Completed
     const [showSatisfaction, setShowSatisfaction] = useState(false);
 
@@ -121,23 +123,35 @@ export default function LiveArena({ groupId }: { groupId: number }) {
                         </div>
 
                         <div className="pt-6 flex gap-4">
-                            <div className="flex-1 relative">
-                                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input
-                                    type="number"
-                                    placeholder="Increase discount bid..."
-                                    value={myBid}
-                                    onChange={(e) => setMyBid(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-900/10 focus:border-blue-900 outline-none transition-all"
-                                />
-                            </div>
-                            <button
-                                onClick={handlePlaceBid}
-                                className="premium-button px-8 py-4 flex items-center gap-2"
-                            >
-                                Place Bid
-                                <ArrowUpRight className="w-5 h-5" />
-                            </button>
+                            {isBanned ? (
+                                <div className="w-full bg-red-50 border border-red-100 p-6 rounded-2xl flex items-center justify-center gap-3 shadow-sm">
+                                    <XCircle className="w-6 h-6 text-red-600" />
+                                    <span className="text-sm font-black text-red-600 uppercase tracking-[0.2em] text-center">
+                                        Account Suspended: Default Detected
+                                    </span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex-1 relative">
+                                        <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input
+                                            type="number"
+                                            placeholder="Increase discount bid..."
+                                            value={myBid}
+                                            onChange={(e) => setMyBid(e.target.value)}
+                                            className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-900/10 focus:border-blue-900 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handlePlaceBid}
+                                        disabled={userSyncLoading}
+                                        className="premium-button px-8 py-4 flex items-center gap-2"
+                                    >
+                                        Place Bid
+                                        <ArrowUpRight className="w-5 h-5" />
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

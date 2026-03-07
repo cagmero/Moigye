@@ -1,9 +1,6 @@
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-
-require("@nomicfoundation/hardhat-toolbox-mocha-ethers");
-require("@nomicfoundation/hardhat-ethers");
-require("dotenv").config();
+import "@nomicfoundation/hardhat-ethers";
+import "@nomicfoundation/hardhat-verify";
+import "dotenv/config";
 
 /** @type import('hardhat/config').HardhatUserConfig */
 export default {
@@ -36,5 +33,20 @@ export default {
             url: "https://1rpc.io/sepolia",
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
         }
-    }
+    },
+    etherscan: {
+        apiKey: {
+            creditcoin_testnet: "empty"
+        },
+        customChains: [
+            {
+                network: "creditcoin_testnet",
+                chainId: 102031,
+                urls: {
+                    apiURL: "https://creditcoin-testnet.blockscout.com/api",
+                    browserURL: "https://creditcoin-testnet.blockscout.com/",
+                },
+            },
+        ],
+    },
 };

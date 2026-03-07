@@ -37,13 +37,23 @@ Moigye (Korean for "gathering") is a decentralized, cross-chain Rotating Savings
 
 ## 🏁 Quick Start
 
-### Deployed Contracts (Updated Production Versions)
-- **MoigyeSBT**: `0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D`
-- **ScoreManager**: `0x0165878A594ca255338adfa4d48449f69242Eb8F`
-- **BiddingEngine**: `0xa513E6E4b8f2a923D98304ec87F64353C4D5C853`
-- **MoigyeVault (Sepolia)**: `0x2279B181aA564344444444444444444444444444`
-- **USCOracle**: `0x8A753747A1Fa494EC906cE90E9f37563A8AF630e`
-- **MoigyeUSD**: `0x4ed7c06655c1b138c84014c119902c0039725807`
+### Deployed Contracts (Creditcoin Testnet — Chain ID: 102031)
+
+| Contract | Address | Explorer |
+|---|---|---|
+| **MoigyeSBT** | `0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D` | [View](https://creditcoin-testnet.blockscout.com/address/0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D) |
+| **ScoreManager** | `0x0165878A594ca255338adfa4d48449f69242Eb8F` | [View](https://creditcoin-testnet.blockscout.com/address/0x0165878A594ca255338adfa4d48449f69242Eb8F) |
+| **BiddingEngine** | `0xa513E6E4b8f2a923D98304ec87F64353C4D5C853` | [View](https://creditcoin-testnet.blockscout.com/address/0xa513E6E4b8f2a923D98304ec87F64353C4D5C853) |
+| **GyeManager** | `0xC6AF175200807DeE213f58D4C375a574284ba2f0` | [View](https://creditcoin-testnet.blockscout.com/address/0xC6AF175200807DeE213f58D4C375a574284ba2f0) |
+| **GyeStaking** | `0x60CeeEb9A7172Fd20339692B19e0228087e17AA9` | [View](https://creditcoin-testnet.blockscout.com/address/0x60CeeEb9A7172Fd20339692B19e0228087e17AA9) |
+| **USCOracle** | `0x8A753747A1Fa494EC906cE90E9f37563A8AF630e` | [View](https://creditcoin-testnet.blockscout.com/address/0x8A753747A1Fa494EC906cE90E9f37563A8AF630e) |
+
+### Deployed Contracts (Ethereum Sepolia)
+
+| Contract | Address |
+|---|---|
+| **MoigyeVault** | `0x2279B181aA564344444444444444444444444444` |
+| **MoigyeUSD** | `0x4ed7c06655c1b138c84014c119902c0039725807` |
 
 ### Smart Contracts
 1. Install dependencies: `pnpm install`

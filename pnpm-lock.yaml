@@ -27,9 +27,15 @@ importers:
       '@gluwa/cc-next-query-builder':
         specifier: ^0.5.1
         version: 0.5.1(bufferutil@4.0.7)(utf-8-validate@6.0.3)
+      '@nomicfoundation/hardhat-ethers':
+        specifier: ^4.0.6
+        version: 4.0.6(bufferutil@4.0.7)(hardhat@3.1.11(bufferutil@4.0.7)(utf-8-validate@6.0.3))(utf-8-validate@6.0.3)
       '@nomicfoundation/hardhat-toolbox-mocha-ethers':
         specifier: ^3.0.3
         version: 3.0.3(029ebc9ff468b0a9914e54789d433d68)
+      '@nomicfoundation/hardhat-verify':
+        specifier: ^3.0.12
+        version: 3.0.12(hardhat@3.1.11(bufferutil@4.0.7)(utf-8-validate@6.0.3))
       '@openzeppelin/contracts':
         specifier: ^5.4.0
         version: 5.6.1
