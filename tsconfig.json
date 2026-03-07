@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
         "target": "ES2020",
-        "module": "CommonJS",
-        "moduleResolution": "node",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
@@ -12,9 +12,17 @@
             "./chainlink-cre"
         ]
     },
+    "ts-node": {
+        "esm": true,
+        "experimentalSpecifierResolution": "node"
+    },
     "include": [
         "**/*.ts",
         "**/*.tsx",
         "chainlink-cre/types.d.ts"
+    ],
+    "exclude": [
+        "frontend",
+        "node_modules"
     ]
 }

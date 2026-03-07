@@ -8,30 +8,52 @@ Moigye (Korean for "gathering") is a decentralized, cross-chain Rotating Savings
 
 - **Autonomous Yield Optimization**: Powered by Chainlink CRE, the protocol automatically reinvests idle pooled funds into the highest-yielding DeFi protocols (Aave, Compound) without human intervention.
 - **Cross-Chain Settlement**: Built on a Hub (Creditcoin EVM) and Spoke (Sepolia) model. Proofs are verified using native precompiles for maximum security.
+- **Anti-Default Guarantee Bond**: Implements a financial lock where 30% of the winner's payout is held in escrow as a guarantee bond until the final round, discouraging defaults.
+- **Soulbound Reputation (SBT)**: A non-transferable "Soulbound Token" system that tracks user reliability (Active, Trusted, Defaulted), providing Sybil-resistance.
 - **Blind Bidding (Nak-chal-gye)**: Dynamic yield dividends generated through a blind discount bidding engine.
-- **On-Chain Credit Scoring**: Automated score management based on participation and reliability.
 
 ## 🏗 Architecture
 
 ### 1. Hub Chain (Creditcoin Testnet)
 - **GyeManager.sol**: The source of truth for pool state, winners, and settlement schedules.
-- **BiddingEngine.sol**: Logic for handling blind bids and calculating prize dividends.
-- **ScoreManager.sol**: Tracks user reliability scores.
+- **BiddingEngine.sol**: Logic for handling blind bids, calculating prize dividends, and the 70/30 payout split.
+- **ScoreManager.sol**: Tracks user reliability scores and manages SBT status updates.
+- **MoigyeSBT.sol**: Soulbound Token contract for on-chain reputation.
+- **USCOracle.sol**: Real implementation for fetching verified cross-chain query results.
 
 ### 2. Spoke Chain (Ethereum Sepolia)
-- **MoigyeVault.sol**: The custody contract. Users deposit USDC here. Funds are managed by the CRE Agent.
+- **MoigyeVault.sol**: The custody contract. Users deposit USDC here. Handles the 30% bond escrow and yield optimization.
+- **MoigyeUSD.sol**: Production-ready stablecoin used for the protocol.
 
 ### 3. Chainlink CRE Agent
 - **Autonomous Yield Rebalancer**: An agentic workflow that monitors Sepolia liquidity and optimizes off-chain yield capture.
 
 ## 🛠 Project Structure
 
-- `/contracts`: Core Solidity smart contracts.
+- `/contracts`: Core Solidity smart contracts (Mocks removed).
 - `/chainlink-cre`: CRE Agent scripts and simulation guides.
 - `/scripts/bridge`: Bridge daemons for cross-chain proof relay.
-- `/frontend`: Next.js (App Router) minimalist dashboard.
+- `/frontend`: Next.js (App Router) minimalist dashboard with Reputation Badges.
 
 ## 🏁 Quick Start
+
+### Deployed Contracts (Creditcoin Testnet — Chain ID: 102031)
+
+| Contract | Address | Explorer |
+|---|---|---|
+| **MoigyeSBT** | `0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D` | [View](https://creditcoin-testnet.blockscout.com/address/0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D) |
+| **ScoreManager** | `0x0165878A594ca255338adfa4d48449f69242Eb8F` | [View](https://creditcoin-testnet.blockscout.com/address/0x0165878A594ca255338adfa4d48449f69242Eb8F) |
+| **BiddingEngine** | `0xa513E6E4b8f2a923D98304ec87F64353C4D5C853` | [View](https://creditcoin-testnet.blockscout.com/address/0xa513E6E4b8f2a923D98304ec87F64353C4D5C853) |
+| **GyeManager** | `0xC6AF175200807DeE213f58D4C375a574284ba2f0` | [View](https://creditcoin-testnet.blockscout.com/address/0xC6AF175200807DeE213f58D4C375a574284ba2f0) |
+| **GyeStaking** | `0x60CeeEb9A7172Fd20339692B19e0228087e17AA9` | [View](https://creditcoin-testnet.blockscout.com/address/0x60CeeEb9A7172Fd20339692B19e0228087e17AA9) |
+| **USCOracle** | `0x8A753747A1Fa494EC906cE90E9f37563A8AF630e` | [View](https://creditcoin-testnet.blockscout.com/address/0x8A753747A1Fa494EC906cE90E9f37563A8AF630e) |
+
+### Deployed Contracts (Ethereum Sepolia)
+
+| Contract | Address | Explorer |
+|---|---|---|
+| **MoigyeVault** | `0xF3A7e3D340258aeE748f2B773c2C01d1B5d84b00` | [View](https://sepolia.etherscan.io/address/0xF3A7e3D340258aeE748f2B773c2C01d1B5d84b00) |
+| **MoigyeUSD** | `0x4ed7c06655c1b138c84014c119902c0039725807` | [View](https://sepolia.etherscan.io/address/0x4ed7c06655c1b138c84014c119902c0039725807) |
 
 ### Smart Contracts
 1. Install dependencies: `pnpm install`

@@ -1,55 +1,52 @@
-require("@nomicfoundation/hardhat-toolbox");
-require("dotenv").config();
+import "@nomicfoundation/hardhat-ethers";
+import "@nomicfoundation/hardhat-verify";
+import "dotenv/config";
 
 /** @type import('hardhat/config').HardhatUserConfig */
-module.exports = {
+export default {
     solidity: {
         compilers: [
-            { version: "0.8.20", settings: { viaIR: true, optimizer: { enabled: true, runs: 200 } } },
-            { version: "0.8.23", settings: { viaIR: true, optimizer: { enabled: true, runs: 200 } } }
+            { version: "0.8.20", settings: { evmVersion: "cancun", viaIR: true, optimizer: { enabled: true, runs: 200 } } },
+            { version: "0.8.23", settings: { evmVersion: "cancun", viaIR: true, optimizer: { enabled: true, runs: 200 } } },
+            { version: "0.8.24", settings: { evmVersion: "cancun", viaIR: true, optimizer: { enabled: true, runs: 200 } } }
         ],
     },
     networks: {
         hardhat: {
+            type: "edr-simulated",
             chainId: 1337,
         },
-        ganache: {
-            url: "http://127.0.0.1:7545",
-            accounts: process.env.GANACHE_PRIVATE_KEY ? [process.env.GANACHE_PRIVATE_KEY] : [],
-        },
         ctcTestnet: {
+            type: "http",
             url: "https://rpc.cc3-testnet.creditcoin.network",
             chainId: 102031,
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
         },
         uscTestnetV2: {
+            type: "http",
             url: "https://rpc.usc-testnet2.creditcoin.network",
             chainId: 102036,
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
         },
         sepolia: {
+            type: "http",
             url: "https://1rpc.io/sepolia",
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-        },
-        baseSepolia: {
-            url: String("https://base-sepolia.api.onfinality.io/public"),
-            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-            chainId: 84532,
-        },
-        fuji: {
-            url: "https://api.avax-test.network/ext/bc/C/rpc",
-            chainId: 43113,
-            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-        },
-        monadTestnet: {
-            url: String("https://testnet-rpc.monad.xyz/"),
-            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-            chainId: 20143,
-        },
-        cronosTestnet: {
-            url: String("https://evm-t3.cronos.org"),
-            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-            chainId: 338,
         }
-    }
+    },
+    etherscan: {
+        apiKey: {
+            creditcoin_testnet: "empty"
+        },
+        customChains: [
+            {
+                network: "creditcoin_testnet",
+                chainId: 102031,
+                urls: {
+                    apiURL: "https://creditcoin-testnet.blockscout.com/api",
+                    browserURL: "https://creditcoin-testnet.blockscout.com/",
+                },
+            },
+        ],
+    },
 };

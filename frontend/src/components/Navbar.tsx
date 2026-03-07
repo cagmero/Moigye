@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Wallet, Menu, LogOut, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
+import SBTBadge from "./SBTBadge";
 
 export default function Navbar() {
     const { login, logout, authenticated, user } = usePrivy();
@@ -62,6 +63,8 @@ export default function Navbar() {
                             <motion.div
                                 className="flex items-center gap-3 px-5 py-2.5 bg-white border border-slate-200 rounded-full cursor-pointer hover:border-slate-300 transition-colors shadow-sm"
                             >
+                                <SBTBadge status="Trusted" />
+                                <div className="w-1 h-4 w-px bg-slate-100 hidden sm:block" />
                                 <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center">
                                     <Wallet className="w-3 h-3 text-white" />
                                 </div>

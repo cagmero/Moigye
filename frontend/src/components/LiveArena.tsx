@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Gavel, Trophy, User, ArrowUpRight, CheckCircle2, XCircle, DollarSign } from "lucide-react";
+import { Gavel, Trophy, User, ArrowUpRight, CheckCircle2, XCircle, DollarSign, ShieldCheck } from "lucide-react";
+import { useUserSync } from "@/hooks/useUserSync";
 import { useAccount } from "wagmi";
 import { supabase } from "@/utils/supabaseClient";
 
@@ -13,6 +14,7 @@ interface Bid {
 export default function LiveArena({ groupId }: { groupId: number }) {
     const [bids, setBids] = useState<Bid[]>([]);
     const [myBid, setMyBid] = useState("");
+    const { isBanned, loading: userSyncLoading } = useUserSync();
     const [phase, setPhase] = useState("BiddingR1"); // BiddingR1, Voting, Finalchallenge, Completed
     const [showSatisfaction, setShowSatisfaction] = useState(false);
 
@@ -121,23 +123,35 @@ export default function LiveArena({ groupId }: { groupId: number }) {
                         </div>
 
                         <div className="pt-6 flex gap-4">
-                            <div className="flex-1 relative">
-                                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input
-                                    type="number"
-                                    placeholder="Increase discount bid..."
-                                    value={myBid}
-                                    onChange={(e) => setMyBid(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-900/10 focus:border-blue-900 outline-none transition-all"
-                                />
-                            </div>
-                            <button
-                                onClick={handlePlaceBid}
-                                className="premium-button px-8 py-4 flex items-center gap-2"
-                            >
-                                Place Bid
-                                <ArrowUpRight className="w-5 h-5" />
-                            </button>
+                            {isBanned ? (
+                                <div className="w-full bg-red-50 border border-red-100 p-6 rounded-2xl flex items-center justify-center gap-3 shadow-sm">
+                                    <XCircle className="w-6 h-6 text-red-600" />
+                                    <span className="text-sm font-black text-red-600 uppercase tracking-[0.2em] text-center">
+                                        Account Suspended: Default Detected
+                                    </span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex-1 relative">
+                                        <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input
+                                            type="number"
+                                            placeholder="Increase discount bid..."
+                                            value={myBid}
+                                            onChange={(e) => setMyBid(e.target.value)}
+                                            className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-900/10 focus:border-blue-900 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handlePlaceBid}
+                                        disabled={userSyncLoading}
+                                        className="premium-button px-8 py-4 flex items-center gap-2"
+                                    >
+                                        Place Bid
+                                        <ArrowUpRight className="w-5 h-5" />
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -151,10 +165,31 @@ export default function LiveArena({ groupId }: { groupId: number }) {
                         <h3 className="text-xl font-bold text-slate-900">Current Winner</h3>
                         <p className="text-blue-900 font-mono font-bold mt-1">{bids[0]?.bidder}</p>
                     </div>
-                    <div className="w-full p-6 bg-slate-50 rounded-2xl border border-slate-100 italic">
-                        <p className="text-sm text-slate-500">Predicted Yield Distribution</p>
-                        <p className="text-2xl font-bold text-emerald-600 mt-1">+${((bids[0]?.amount || 0) / 9).toFixed(2)}</p>
-                        <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mt-1">Per Non-Winning Member</p>
+                    <div className="w-full space-y-4">
+                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                            <p className="text-sm text-slate-500 font-medium">Estimated Payout Breakdown</p>
+                            <div className="mt-4 space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Immediate (70%)</span>
+                                    <span className="text-lg font-black text-slate-900">${((bids[0]?.amount || 0) * 0.7).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Bond (30%)</span>
+                                    <span className="text-lg font-black text-blue-600">${((bids[0]?.amount || 0) * 0.3).toFixed(2)}</span>
+                                </div>
+                                <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                                    <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Total Pot</span>
+                                    <span className="text-xl font-black text-slate-900">${(bids[0]?.amount || 0).toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 text-left">
+                            <p className="text-[10px] text-blue-800 font-black uppercase tracking-[0.1em] leading-relaxed">
+                                <ShieldCheck className="w-3 h-3 inline mr-1 mb-0.5" />
+                                Anti-Default: Bond released after final round.
+                            </p>
+                        </div>
                     </div>
                     <button
                         onClick={() => setShowSatisfaction(true)}

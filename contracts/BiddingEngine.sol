@@ -9,7 +9,14 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  * @dev Hub chain (Creditcoin) contract for Nak-chal-gye auction lifecycle.
  */
 contract BiddingEngine is Ownable, ReentrancyGuard {
-    enum Phase { Idle, Deposit, BiddingR1, Voting, FinalChallenge, Completed }
+    enum Phase {
+        Idle,
+        Deposit,
+        BiddingR1,
+        Voting,
+        FinalChallenge,
+        Completed
+    }
 
     struct GyeGroup {
         uint256 groupId;
@@ -27,10 +34,20 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
     }
 
     mapping(uint256 => GyeGroup) public groups;
-    
-    event BidPlaced(uint256 indexed groupId, address indexed bidder, uint256 discountAmount);
+
+    event BidPlaced(
+        uint256 indexed groupId,
+        address indexed bidder,
+        uint256 discountAmount
+    );
     event PhaseTransition(uint256 indexed groupId, Phase newPhase);
-    event WinnerSelected(uint256 indexed groupId, address indexed winner, uint256 payout, uint256 yieldPerMember);
+    event WinnerSelected(
+        uint256 indexed groupId,
+        address indexed winner,
+        uint256 payout,
+        uint256 lockedBond,
+        uint256 yieldPerMember
+    );
 
     constructor() Ownable(msg.sender) {}
 
@@ -62,20 +79,33 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
     }
 
     function startDepositWindow(uint256 groupId) external {
-        require(block.timestamp >= groups[groupId].biddingTimestamp - 30 minutes, "Window not yet open");
+        require(
+            block.timestamp >= groups[groupId].biddingTimestamp - 30 minutes,
+            "Window not yet open"
+        );
         groups[groupId].phase = Phase.Deposit;
         emit PhaseTransition(groupId, Phase.Deposit);
     }
 
     function startRound1(uint256 groupId) external {
-        require(groups[groupId].phase == Phase.Deposit, "Must be in deposit phase");
+        require(
+            groups[groupId].phase == Phase.Deposit,
+            "Must be in deposit phase"
+        );
         groups[groupId].phase = Phase.BiddingR1;
         emit PhaseTransition(groupId, Phase.BiddingR1);
     }
 
-    function submitBid(uint256 groupId, uint256 discount) external onlyGroupMember(groupId) nonReentrant {
+    function submitBid(
+        uint256 groupId,
+        uint256 discount
+    ) external onlyGroupMember(groupId) nonReentrant {
         GyeGroup storage group = groups[groupId];
-        require(group.phase == Phase.BiddingR1 || group.phase == Phase.FinalChallenge, "Bidding not active");
+        require(
+            group.phase == Phase.BiddingR1 ||
+                group.phase == Phase.FinalChallenge,
+            "Bidding not active"
+        );
         require(!group.hasWon[msg.sender], "User already won a round");
         require(discount > group.highestBid, "Bid too low");
 
@@ -93,11 +123,14 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
         emit PhaseTransition(groupId, Phase.Voting);
     }
 
-    function voteSatisfaction(uint256 groupId, bool isSatisfied) external onlyGroupMember(groupId) {
+    function voteSatisfaction(
+        uint256 groupId,
+        bool isSatisfied
+    ) external onlyGroupMember(groupId) {
         GyeGroup storage group = groups[groupId];
         require(group.phase == Phase.Voting, "Not in voting phase");
         require(block.timestamp <= group.votingEndTime, "Voting ended");
-        
+
         group.satisfactionVotes[msg.sender] = isSatisfied;
         if (isSatisfied) group.positiveVotes++;
 
@@ -121,7 +154,10 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
     }
 
     function finalizeFinalChallenge(uint256 groupId) external {
-        require(groups[groupId].phase == Phase.FinalChallenge, "Not in challenge phase");
+        require(
+            groups[groupId].phase == Phase.FinalChallenge,
+            "Not in challenge phase"
+        );
         _finalizeRound(groupId);
     }
 
@@ -130,18 +166,26 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
         address winner = group.highestBidder;
         uint256 discount = group.highestBid;
         uint256 pot = group.members.length * group.monthlyContribution;
-        uint256 payout = pot - discount;
+
+        uint256 totalPayout = pot - discount;
+        uint256 payoutImmediate = (totalPayout * 70) / 100;
+        uint256 lockedBond = totalPayout - payoutImmediate;
 
         group.hasWon[winner] = true;
         group.phase = Phase.Completed;
 
         uint256 yieldPerMember = discount / (group.members.length - 1);
-        
-        emit WinnerSelected(groupId, winner, payout, yieldPerMember);
+
+        emit WinnerSelected(
+            groupId,
+            winner,
+            payoutImmediate,
+            lockedBond,
+            yieldPerMember
+        );
         emit PhaseTransition(groupId, Phase.Completed);
     }
 
     // Helper for frontend state tracking
-    uint256 private highestBidValue; 
+    uint256 private highestBidValue;
 }
-

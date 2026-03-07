@@ -6,15 +6,15 @@ import {
 import { Chain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { ethers } from 'ethers';
-import { chainKeyConverter, computeQueryId } from './utils';
-import { PROVER_ABI } from './constants/abi';
-const {
-    QueryBuilder,
-    QueryableFields
-} = require('@gluwa/cc-next-query-builder');
+import { readFileSync } from 'fs';
+import { chainKeyConverter, computeQueryId } from './utils.js';
+import { PROVER_ABI } from './constants/abi.js';
+import { QueryBuilder, QueryableFields } from '@gluwa/cc-next-query-builder';
 type ChainQuery = any;
 
-const LiquidityVaultABI = require('../../artifacts/contracts/LiquidityVault.sol/LiquidityVault.json').abi;
+const LiquidityVaultABI = JSON.parse(
+    readFileSync(new URL('../../artifacts/contracts/LiquidityVault.sol/LiquidityVault.json', import.meta.url), 'utf-8')
+).abi;
 const BLOCK_LAG: bigint = 3n;
 
 async function main() {
@@ -47,7 +47,7 @@ async function main() {
     if (!tx || !receipt) throw new Error("Missing tx/receipt");
 
     console.log('Building query...');
-    const builder = QueryBuilder.createFromTransaction(tx, receipt);
+    const builder = QueryBuilder.createFromTransaction(tx as any, receipt as any);
     builder.setAbiProvider(async () => JSON.stringify(LiquidityVaultABI));
 
     builder.addStaticField(QueryableFields.RxStatus).addStaticField(QueryableFields.TxFrom).addStaticField(QueryableFields.TxTo);
@@ -69,7 +69,7 @@ async function main() {
         abi: PROVER_ABI,
         functionName: 'computeQueryCost',
         args: [query],
-    }) as bigint;
+    } as any) as bigint;
 
     console.log("Submitting...");
     const txHashSubmit = await ccNextWalletClient.writeContract({

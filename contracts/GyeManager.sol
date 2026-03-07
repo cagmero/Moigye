@@ -14,6 +14,10 @@ interface IBiddingEngine {
     ) external;
 }
 
+interface IScoreManager {
+    function getScore(address user) external view returns (uint256);
+}
+
 /**
  * @title GyeManager
  * @dev Hub chain (Creditcoin) contract for ROSCA state management and Lobby system.
@@ -27,6 +31,7 @@ contract GyeManager is Ownable {
         address[] members;
         address[] pendingRequests;
         uint256 fixedDeposit;
+        uint256 minScoreRequired;
         uint256 maxParticipants;
         uint256 biddingDate;
         bool isPublic;
@@ -40,45 +45,75 @@ contract GyeManager is Ownable {
         uint256 currentParticipants;
         uint256 maxParticipants;
         uint256 fixedDeposit;
+        uint256 minScoreRequired;
         uint256 totalPotAmount;
         uint256 biddingDate;
         bool isPublic;
     }
 
     IBiddingEngine public biddingEngine;
+    IScoreManager public scoreManager;
     uint256 public nextGroupId;
     mapping(uint256 => GyeGroup) public groups;
     mapping(bytes32 => bool) public processedTransactions;
 
-    event GroupCreated(uint256 indexed groupId, address moderator, bool isPublic, uint256 deposit);
+    event GroupCreated(
+        uint256 indexed groupId,
+        address moderator,
+        bool isPublic,
+        uint256 deposit
+    );
     event JoinRequest(uint256 indexed groupId, address indexed user);
     event MemberJoined(uint256 indexed groupId, address indexed user);
-    event ContributionVerified(uint256 indexed groupId, address indexed user, uint256 amount);
+    event ContributionVerified(
+        uint256 indexed groupId,
+        address indexed user,
+        uint256 amount
+    );
 
-    bytes32 public constant DEPOSIT_EVENT_SIG = keccak256("ContributionDeposited(address,uint256,uint256,uint256)");
+    bytes32 public constant DEPOSIT_EVENT_SIG =
+        keccak256("ContributionDeposited(address,uint256,uint256,uint256)");
 
-    constructor(address _biddingEngine) Ownable(msg.sender) {
+    address constant NATIVE_VERIFIER =
+        0x0000000000000000000000000000000000000FD2;
+
+    constructor(
+        address _biddingEngine,
+        address _scoreManager
+    ) Ownable(msg.sender) {
         biddingEngine = IBiddingEngine(_biddingEngine);
+        scoreManager = IScoreManager(_scoreManager);
+    }
+
+    function setScoreManager(address _scoreManager) external onlyOwner {
+        scoreManager = IScoreManager(_scoreManager);
     }
 
     function createGroup(
         bool _isPublic,
         uint256 _fixedDeposit,
+        uint256 _minScoreRequired,
         uint256 _maxParticipants,
         uint256 _biddingDate
     ) external {
+        require(
+            scoreManager.getScore(msg.sender) >= _minScoreRequired,
+            "Credit score too low to moderate"
+        );
+
         uint256 groupId = nextGroupId++;
         GyeGroup storage group = groups[groupId];
         group.groupId = groupId;
         group.moderator = msg.sender;
         group.fixedDeposit = _fixedDeposit;
+        group.minScoreRequired = _minScoreRequired;
         group.maxParticipants = _maxParticipants;
         group.biddingDate = _biddingDate;
         group.isPublic = _isPublic;
         group.isActive = true;
 
         group.members.push(msg.sender);
-        
+
         emit GroupCreated(groupId, msg.sender, _isPublic, _fixedDeposit);
         emit MemberJoined(groupId, msg.sender);
     }
@@ -88,7 +123,11 @@ contract GyeManager is Ownable {
         require(group.isActive, "Group not active");
         require(group.isPublic, "Group is private");
         require(group.members.length < group.maxParticipants, "Group full");
-        
+        require(
+            scoreManager.getScore(msg.sender) >= group.minScoreRequired,
+            "Credit score too low"
+        );
+
         for (uint256 i = 0; i < group.members.length; i++) {
             require(group.members[i] != msg.sender, "Already a member");
         }
@@ -101,7 +140,11 @@ contract GyeManager is Ownable {
         GyeGroup storage group = groups[_groupId];
         require(group.isActive, "Group not active");
         require(!group.isPublic, "Group is public");
-        
+        require(
+            scoreManager.getScore(msg.sender) >= group.minScoreRequired,
+            "Credit score too low"
+        );
+
         for (uint256 i = 0; i < group.members.length; i++) {
             require(group.members[i] != msg.sender, "Already a member");
         }
@@ -121,7 +164,9 @@ contract GyeManager is Ownable {
         bool found = false;
         for (uint256 i = 0; i < group.pendingRequests.length; i++) {
             if (group.pendingRequests[i] == _user) {
-                group.pendingRequests[i] = group.pendingRequests[group.pendingRequests.length - 1];
+                group.pendingRequests[i] = group.pendingRequests[
+                    group.pendingRequests.length - 1
+                ];
                 group.pendingRequests.pop();
                 found = true;
                 break;
@@ -139,7 +184,9 @@ contract GyeManager is Ownable {
 
         for (uint256 i = 0; i < group.pendingRequests.length; i++) {
             if (group.pendingRequests[i] == _user) {
-                group.pendingRequests[i] = group.pendingRequests[group.pendingRequests.length - 1];
+                group.pendingRequests[i] = group.pendingRequests[
+                    group.pendingRequests.length - 1
+                ];
                 group.pendingRequests.pop();
                 break;
             }
@@ -150,9 +197,14 @@ contract GyeManager is Ownable {
         GyeGroup storage group = groups[_groupId];
         require(msg.sender == group.moderator, "Not moderator");
         require(!group.started, "Already started");
-        
+
         group.started = true;
-        biddingEngine.createGyeGroup(_groupId, group.members, group.fixedDeposit, group.biddingDate);
+        biddingEngine.createGyeGroup(
+            _groupId,
+            group.members,
+            group.fixedDeposit,
+            group.biddingDate
+        );
     }
 
     function getAllPublicGroups() external view returns (GroupView[] memory) {
@@ -174,6 +226,7 @@ contract GyeManager is Ownable {
                     currentParticipants: g.members.length,
                     maxParticipants: g.maxParticipants,
                     fixedDeposit: g.fixedDeposit,
+                    minScoreRequired: g.minScoreRequired,
                     totalPotAmount: g.members.length * g.fixedDeposit,
                     biddingDate: g.biddingDate,
                     isPublic: g.isPublic
@@ -184,11 +237,13 @@ contract GyeManager is Ownable {
         return publicGroups;
     }
 
-    function getPendingRequests(uint256 _groupId) external view returns (address[] memory) {
+    function getPendingRequests(
+        uint256 _groupId
+    ) external view returns (address[] memory) {
         return groups[_groupId].pendingRequests;
     }
 
-    function verifyDeposit(
+    function registerContributionFromProof(
         uint64 chainKey,
         uint64 height,
         bytes calldata encodedTransaction,
@@ -196,10 +251,12 @@ contract GyeManager is Ownable {
         INativeQueryVerifier.ContinuityProof calldata continuityProof
     ) external {
         bytes32 txHash = keccak256(encodedTransaction);
-        require(!processedTransactions[txHash], "Transaction already processed");
+        require(
+            !processedTransactions[txHash],
+            "Transaction already processed"
+        );
 
-        INativeQueryVerifier verifier = NativeQueryVerifierLib.getVerifier();
-        bool success = verifier.verifyAndEmit(
+        bool success = INativeQueryVerifier(NATIVE_VERIFIER).verify(
             chainKey,
             height,
             encodedTransaction,
@@ -208,13 +265,18 @@ contract GyeManager is Ownable {
         );
         require(success, "Proof verification failed");
 
-        EvmV1Decoder.ReceiptFields memory receipt = EvmV1Decoder.decodeReceiptFields(encodedTransaction);
-        EvmV1Decoder.LogEntry[] memory logs = EvmV1Decoder.getLogsByEventSignature(receipt, DEPOSIT_EVENT_SIG);
-        
+        EvmV1Decoder.ReceiptFields memory receipt = EvmV1Decoder
+            .decodeReceiptFields(encodedTransaction);
+        EvmV1Decoder.LogEntry[] memory logs = EvmV1Decoder
+            .getLogsByEventSignature(receipt, DEPOSIT_EVENT_SIG);
+
         require(logs.length > 0, "Deposit event not found");
 
-        (address user, uint256 amount, uint256 groupId, ) = abi.decode(logs[0].data, (address, uint256, uint256, uint256));
-        
+        (address user, uint256 amount, uint256 groupId, ) = abi.decode(
+            logs[0].data,
+            (address, uint256, uint256, uint256)
+        );
+
         address indexedUser = address(uint160(uint256(logs[0].topics[1])));
         require(user == indexedUser, "User mismatch");
         require(groups[groupId].isActive, "Group not active");
@@ -223,5 +285,3 @@ contract GyeManager is Ownable {
         emit ContributionVerified(groupId, user, amount);
     }
 }
-
-

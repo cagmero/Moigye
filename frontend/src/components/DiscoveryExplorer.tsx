@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Filter, ArrowUpDown, DollarSign, Users, Calendar, ArrowRight, Globe, Loader2 } from "lucide-react";
+import { Search, Filter, ArrowUpDown, DollarSign, Users, Calendar, ArrowRight, Globe, Loader2, XCircle } from "lucide-react";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { GYE_MANAGER_CONTRACT } from "@/lib/contracts";
+import { useUserSync } from "@/hooks/useUserSync";
 
 interface GyeGroup {
     groupId: number;
@@ -21,6 +22,7 @@ export default function DiscoveryExplorer({ onBack }: { onBack: () => void }) {
     const [search, setSearch] = useState("");
     const [filterDeposit, setFilterDeposit] = useState<number>(0);
     const [sortBy, setSortBy] = useState<"pot" | "date" | "members">("date");
+    const { isBanned, loading: userSyncLoading } = useUserSync();
 
     // 1. Fetch Public Groups from Contract
     const { data: rawGroups, isLoading, refetch } = useReadContract({
@@ -174,15 +176,24 @@ export default function DiscoveryExplorer({ onBack }: { onBack: () => void }) {
                                         <Calendar className="w-4 h-4 text-slate-300" />
                                         Bidding Room Opens {new Date(group.biddingDate).toLocaleDateString()}
                                     </div>
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        disabled={isJoining || isConfirming || group.currentParticipants >= group.maxParticipants}
-                                        onClick={() => handleJoin(group.groupId)}
-                                        className={`w-full premium-button py-4 text-sm ${isJoining || isConfirming ? 'bg-slate-200' : ''}`}
-                                    >
-                                        {isJoining ? "Joining..." : isConfirming ? "Confirming..." : group.currentParticipants >= group.maxParticipants ? "Group Full" : "Join Circle"}
-                                    </motion.button>
+                                    {isBanned ? (
+                                        <div className="w-full bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center justify-center gap-2 group-hover:bg-red-100 transition-colors shadow-sm">
+                                            <XCircle className="w-4 h-4 text-red-600" />
+                                            <span className="text-[10px] font-black text-red-600 uppercase tracking-widest text-center">
+                                                Account Suspended: Default Detected
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            disabled={isJoining || isConfirming || userSyncLoading || group.currentParticipants >= group.maxParticipants}
+                                            onClick={() => handleJoin(group.groupId)}
+                                            className={`w-full premium-button py-4 text-sm ${isJoining || isConfirming ? 'bg-slate-200' : ''}`}
+                                        >
+                                            {isJoining ? "Joining..." : isConfirming ? "Confirming..." : group.currentParticipants >= group.maxParticipants ? "Group Full" : "Join Circle"}
+                                        </motion.button>
+                                    )}
                                 </div>
                             </motion.div>
                         ))}
