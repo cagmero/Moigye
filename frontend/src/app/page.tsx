@@ -143,8 +143,8 @@ export default function LandingPage() {
               <div className="relative z-10 space-y-12">
                 <div className="flex justify-between items-center">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Pot</p>
-                    <p className="text-6xl font-black text-slate-900 tracking-tighter">$12,400</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Status</p>
+                    <p className="text-4xl font-black text-slate-900 tracking-tighter">Live on Sepolia</p>
                   </div>
                   <Users className="w-12 h-12 text-slate-200" />
                 </div>
@@ -152,14 +152,14 @@ export default function LandingPage() {
                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
-                      whileInView={{ width: "75%" }}
-                      transition={{ duration: 1.5, delay: 0.5 }}
+                      whileInView={{ width: "100%" }}
+                      transition={{ duration: 2, delay: 0.5 }}
                       className="h-full bg-slate-900"
                     />
                   </div>
                   <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
-                    <span>Active Bidding</span>
-                    <span>12 / 16 Members</span>
+                    <span>Contracts Deployed</span>
+                    <span>Creditcoin + Sepolia</span>
                   </div>
                 </div>
                 <div className="flex gap-4">

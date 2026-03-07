@@ -1,28 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Shield, User, CheckCircle2, XCircle, ArrowRight, Clock, Loader2, Play } from "lucide-react";
+import { Shield, User, CheckCircle2, XCircle, ArrowRight, Loader2, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAccount, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { GYE_MANAGER_CONTRACT } from "@/lib/contracts";
-
-interface ExtendedGyeGroup {
-    id: bigint;
-    moderator: `0x${string}`;
-    members: readonly `0x${string}`[];
-    pendingRequests: readonly `0x${string}`[];
-    fixedDeposit: bigint;
-    maxParticipants: bigint;
-    biddingDate: bigint;
-    isPublic: boolean;
-    isCircleActive: boolean;
-    started: boolean;
-}
+import { supabase } from "@/utils/supabaseClient";
 
 export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
     const { address } = useAccount();
 
-    // 1. Fetch all groups to find moderated ones
+    // 1. Fetch all groups to find ones moderated by this address
     const { data: nextGroupId } = useReadContract({
         ...GYE_MANAGER_CONTRACT,
         functionName: "nextGroupId",
@@ -41,19 +29,50 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
     const { writeContract, data: hash, isPending: isMutating } = useWriteContract();
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
-    useEffect(() => {
-        if (isConfirmed) refetchGroups();
-    }, [isConfirmed, refetchGroups]);
+    // 3. Track which group is being started (for Supabase sync)
+    const [startingGroupId, setStartingGroupId] = useState<bigint | null>(null);
+    const [syncing, setSyncing] = useState(false);
 
-    const handleAction = (groupId: bigint, user: string, action: 'approve' | 'decline') => {
+    useEffect(() => {
+        if (isConfirmed) {
+            refetchGroups();
+            // Sync auction start to Supabase so LiveArena unlocks for members
+            if (startingGroupId !== null) {
+                const syncToSupabase = async () => {
+                    setSyncing(true);
+                    const gId = Number(startingGroupId);
+
+                    // Upsert group row, set auction started
+                    const { error } = await supabase
+                        .from("groups")
+                        .upsert(
+                            {
+                                group_id: gId,
+                                moderator: address?.toLowerCase() || "",
+                                is_auction_started: true,
+                            },
+                            { onConflict: "group_id" }
+                        );
+
+                    if (error) console.error("Supabase sync error:", error);
+                    setSyncing(false);
+                    setStartingGroupId(null);
+                };
+                syncToSupabase();
+            }
+        }
+    }, [isConfirmed, refetchGroups, startingGroupId, address]);
+
+    const handleAction = (groupId: bigint, user: string, action: "approve" | "decline") => {
         writeContract({
             ...GYE_MANAGER_CONTRACT,
-            functionName: action === 'approve' ? "approveRequest" : "declineRequest",
+            functionName: action === "approve" ? "approveRequest" : "declineRequest",
             args: [groupId, user as `0x${string}`],
         });
     };
 
     const handleStartAuction = (groupId: bigint) => {
+        setStartingGroupId(groupId);
         writeContract({
             ...GYE_MANAGER_CONTRACT,
             functionName: "startAuction",
@@ -61,7 +80,7 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
         });
     };
 
-    // Parse moderated groups and their requests
+    // Parse moderated groups
     const moderatedGroups: any[] = [];
     if (groupsData) {
         for (let i = 0; i < groupIds.length; i++) {
@@ -69,7 +88,8 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
             const requestsRes = groupsData[i * 2 + 1];
 
             if (groupRes.status === "success" && requestsRes.status === "success") {
-                const [groupId, moderator, fixedDeposit, maxParticipants, biddingDate, isPublic, isCircleActive, started] = (groupRes.result as any) as [bigint, `0x${string}`, bigint, bigint, bigint, boolean, boolean, boolean];
+                const [groupId, moderator, fixedDeposit, maxParticipants, biddingDate, isPublic, isCircleActive, started] =
+                    (groupRes.result as any) as [bigint, `0x${string}`, bigint, bigint, bigint, boolean, boolean, boolean];
 
                 if (moderator === address) {
                     moderatedGroups.push({
@@ -80,7 +100,7 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
                         isPublic,
                         isCircleActive,
                         started,
-                        pendingRequests: (requestsRes.result as unknown) as readonly string[]
+                        pendingRequests: (requestsRes.result as unknown) as readonly string[],
                     });
                 }
             }
@@ -96,7 +116,7 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
                     </div>
                     <div>
                         <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Moderator Hub</h2>
-                        <p className="text-slate-500 font-medium">Manage your private Gye circles and start auctions.</p>
+                        <p className="text-slate-500 font-medium">Manage your circles and start bidding rounds.</p>
                     </div>
                 </div>
                 <button
@@ -125,11 +145,11 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-3">
                                         <h3 className="text-3xl font-black text-slate-900 tracking-tight">Circle #{group.id.toString()}</h3>
-                                        <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${group.isPublic ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                                            {group.isPublic ? 'Public' : 'Private'}
+                                        <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${group.isPublic ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
+                                            {group.isPublic ? "Public" : "Private"}
                                         </span>
                                     </div>
-                                    <p className="text-sm font-bold text-slate-400">Fixed Deposit: ${group.fixedDeposit.toString()} USDC</p>
+                                    <p className="text-sm font-bold text-slate-400">Fixed Deposit: ${group.fixedDeposit.toString()} MoigyeUSD</p>
                                 </div>
 
                                 {!group.started ? (
@@ -137,11 +157,15 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={() => handleStartAuction(group.id)}
-                                        disabled={isMutating || isConfirming}
-                                        className="premium-button flex items-center gap-3 px-8 py-4 bg-emerald-600 shadow-emerald-600/20"
+                                        disabled={isMutating || isConfirming || syncing}
+                                        className="premium-button flex items-center gap-3 px-8 py-4 bg-emerald-600 shadow-emerald-600/20 disabled:opacity-50"
                                     >
-                                        <Play className="w-5 h-5 fill-current" />
-                                        Start Auction Room
+                                        {(isMutating || isConfirming || syncing) && startingGroupId === group.id ? (
+                                            <Loader2 className="w-5 h-5 animate-spin fill-current" />
+                                        ) : (
+                                            <Play className="w-5 h-5 fill-current" />
+                                        )}
+                                        {syncing && startingGroupId === group.id ? "Syncing..." : "Start Auction Room"}
                                     </motion.button>
                                 ) : (
                                     <div className="flex items-center gap-2 px-6 py-4 bg-emerald-50 text-emerald-600 rounded-2xl font-black border border-emerald-100">
@@ -154,7 +178,6 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
                             {/* Pending Requests */}
                             <div className="space-y-6">
                                 <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-2">Pending Requests ({group.pendingRequests.length})</h4>
-
                                 <div className="space-y-4">
                                     {group.pendingRequests.length === 0 ? (
                                         <p className="text-sm font-medium text-slate-400 italic px-2">No pending join requests for this circle.</p>
@@ -166,20 +189,19 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
                                                         <User className="w-6 h-6" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-mono font-bold text-slate-900">{req}</p>
+                                                        <p className="font-mono font-bold text-slate-900">{req.slice(0, 6)}...{req.slice(-4)}</p>
                                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Application Pending</p>
                                                     </div>
                                                 </div>
-
                                                 <div className="flex gap-3">
                                                     <button
-                                                        onClick={() => handleAction(group.id, req, 'decline')}
+                                                        onClick={() => handleAction(group.id, req, "decline")}
                                                         className="p-4 bg-slate-100 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-colors"
                                                     >
                                                         <XCircle className="w-6 h-6" />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleAction(group.id, req, 'approve')}
+                                                        onClick={() => handleAction(group.id, req, "approve")}
                                                         className="px-8 py-4 bg-slate-900 text-white font-black rounded-2xl hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2"
                                                     >
                                                         <CheckCircle2 className="w-5 h-5" />
@@ -196,10 +218,12 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
                 )}
             </div>
 
-            {isConfirming && (
+            {(isConfirming || syncing) && (
                 <div className="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-full flex items-center gap-4 shadow-2xl z-50">
                     <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
-                    <span className="text-sm font-black tracking-widest uppercase">Syncing Transaction...</span>
+                    <span className="text-sm font-black tracking-widest uppercase">
+                        {syncing ? "Opening bidding room..." : "Syncing Transaction..."}
+                    </span>
                 </div>
             )}
         </div>
