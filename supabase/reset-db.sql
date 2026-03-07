@@ -1,43 +1,51 @@
 -- ================================================================
--- Moigye Protocol — Supabase Schema (v2 — with Score System)
+-- Moigye Protocol — DATABASE RESET
+-- WARNING: This will delete ALL existing data in the following tables!
 -- Run this in: Supabase Dashboard → SQL Editor → New Query
 -- ================================================================
 
--- 1. User Registry (with reputation score)
-CREATE TABLE IF NOT EXISTS public.users (
+-- 1. Drop existing tables and functions to ensure a clean slate
+DROP TABLE IF EXISTS public.live_bids CASCADE;
+DROP TABLE IF EXISTS public.bid_history CASCADE;
+DROP TABLE IF EXISTS public.groups CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+
+DROP FUNCTION IF EXISTS public.increment_score(TEXT, INTEGER);
+DROP FUNCTION IF EXISTS public.apply_default_penalty(TEXT);
+
+-- 2. User Registry
+CREATE TABLE public.users (
     wallet_address  TEXT PRIMARY KEY,
     privy_did       TEXT,
     is_banned       BOOLEAN NOT NULL DEFAULT false,
-    score           INTEGER NOT NULL DEFAULT 300,   -- Every new user starts at 300
+    score           INTEGER NOT NULL DEFAULT 300,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2. Groups (mirrors on-chain state for fast UI queries)
-CREATE TABLE IF NOT EXISTS public.groups (
+-- 3. Groups
+CREATE TABLE public.groups (
     group_id            INTEGER PRIMARY KEY,
     moderator           TEXT NOT NULL,
     is_auction_started  BOOLEAN NOT NULL DEFAULT false,
     fixed_deposit       NUMERIC,
     max_participants    INTEGER,
     is_public           BOOLEAN NOT NULL DEFAULT true,
-    min_score_required  INTEGER NOT NULL DEFAULT 300,  -- Score gate for joining
+    min_score_required  INTEGER NOT NULL DEFAULT 300,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3. Live Bids (active bids during an open round — cleared after settlement)
-CREATE TABLE IF NOT EXISTS public.live_bids (
+-- 4. Live Bids
+CREATE TABLE public.live_bids (
     id                  BIGSERIAL PRIMARY KEY,
     group_id            INTEGER NOT NULL REFERENCES public.groups(group_id) ON DELETE CASCADE,
     wallet_address      TEXT NOT NULL,
     discount_amount     NUMERIC NOT NULL,
     placed_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE UNIQUE INDEX live_bids_group_wallet_idx ON public.live_bids(group_id, wallet_address);
 
--- Unique constraint: one active bid per wallet per group
-CREATE UNIQUE INDEX IF NOT EXISTS live_bids_group_wallet_idx ON public.live_bids(group_id, wallet_address);
-
--- 4. Bid History (permanent archive of all settled rounds)
-CREATE TABLE IF NOT EXISTS public.bid_history (
+-- 5. Bid History
+CREATE TABLE public.bid_history (
     id                  BIGSERIAL PRIMARY KEY,
     group_id            INTEGER NOT NULL,
     wallet_address      TEXT NOT NULL,
@@ -47,74 +55,49 @@ CREATE TABLE IF NOT EXISTS public.bid_history (
     completed_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- ----------------------------------------------------------------
--- Score Tier Thresholds (reference — enforced in UI)
--- Tier 1 (300–399): Low-value circles  (fixed_deposit ≤ $500)
--- Tier 2 (400–599): Mid-value circles  (fixed_deposit ≤ $2,000)
--- Tier 3 (600–799): High-value circles (fixed_deposit ≤ $10,000)
--- Tier 4 (800+):    Whale circles      (no limit)
--- ----------------------------------------------------------------
-
--- ----------------------------------------------------------------
--- Enable Realtime on live_bids so LiveArena subscribes to changes
--- ----------------------------------------------------------------
+-- 6. Enable Realtime
+-- (Note: If these fail because table already exists in publication, it's fine)
 ALTER PUBLICATION supabase_realtime ADD TABLE public.live_bids;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.groups;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
 
--- ----------------------------------------------------------------
--- Row Level Security (RLS)
--- ----------------------------------------------------------------
+-- 7. RLS Policies
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.live_bids ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bid_history ENABLE ROW LEVEL SECURITY;
 
--- Users
 CREATE POLICY "read_users"   ON public.users FOR SELECT USING (true);
 CREATE POLICY "upsert_users" ON public.users FOR INSERT WITH CHECK (true);
 CREATE POLICY "update_users" ON public.users FOR UPDATE USING (true);
 
--- Groups
 CREATE POLICY "read_groups"   ON public.groups FOR SELECT USING (true);
 CREATE POLICY "insert_groups" ON public.groups FOR INSERT WITH CHECK (true);
 CREATE POLICY "update_groups" ON public.groups FOR UPDATE USING (true);
 
--- Live bids
 CREATE POLICY "read_live_bids"   ON public.live_bids FOR SELECT USING (true);
 CREATE POLICY "insert_live_bids" ON public.live_bids FOR INSERT WITH CHECK (true);
 CREATE POLICY "delete_live_bids" ON public.live_bids FOR DELETE USING (true);
 
--- Bid history
 CREATE POLICY "read_bid_history"   ON public.bid_history FOR SELECT USING (true);
 CREATE POLICY "insert_bid_history" ON public.bid_history FOR INSERT WITH CHECK (true);
 
--- ----------------------------------------------------------------
--- Score RPC Functions (called via supabase.rpc())
--- ----------------------------------------------------------------
-
--- Award score (e.g., +10 on deposit/join, +20 on winning a round)
+-- 8. RPC Functions
 CREATE OR REPLACE FUNCTION public.increment_score(p_wallet TEXT, p_amount INTEGER)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-    UPDATE public.users
-    SET score = LEAST(1000, score + p_amount)
+    UPDATE public.users SET score = LEAST(1000, score + p_amount)
     WHERE wallet_address = LOWER(p_wallet);
-END;
-$$;
+END; $$;
 
--- Penalty on default — reduce score and can be called by moderator/admin
 CREATE OR REPLACE FUNCTION public.apply_default_penalty(p_wallet TEXT)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     UPDATE public.users
-    SET score    = GREATEST(0, score - 150),
+    SET score = GREATEST(0, score - 150),
         is_banned = CASE WHEN (score - 150) <= 0 THEN true ELSE is_banned END
     WHERE wallet_address = LOWER(p_wallet);
-END;
-$$;
+END; $$;
+
+-- 9. Force Reload
+NOTIFY pgrst, 'reload schema';
