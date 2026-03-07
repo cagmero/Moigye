@@ -1,70 +1,125 @@
+import { cre, EVMClient, CronCapability, TxStatus, encodeCallMsg, prepareReportRequest } from "@chainlink/cre-sdk";
+import { encodeFunctionData, parseAbi, formatUnits, toHex, hexToBigInt } from "viem";
+
 /**
- * Moigye Yield Agent (Chainlink CRE)
+ * Moigye Autonomous Yield & Settlement Agent (Chainlink CRE)
  * 
- * This agent autonomously monitors the pooled USDC in MoigyeVault on Sepolia,
- * simulates depositing into a mock Aave yield pool, and triggers payout withdrawals.
+ * Target: DeFi & Tokenization Hackathon
+ * Description: Dynamically aggregates yield by comparing off-chain APY rates
+ * and rebalancing idle USDC from MoigyeVault (Sepolia) to the highest-yielding protocol.
  */
 
-import { evm } from "@chainlink/cre-capabilities";
+// --- Configuration ---
+const MOIGYE_VAULT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
-// Configurations
-const MOIGYE_VAULT_ADDRESS = "0x..."; // To be replaced with deployment addr
-const USDC_ADDRESS = "0x...";
-const MOCK_AAVE_POOL = "0x...";
-const ROUND_DURATION_BLOCKS = 7200; // ~24 hours
+const PROTOCOLS = {
+    AAVE: "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
+    COMPOUND: "0xc00e94Cb662C3520282E6f5717214004A7f26888"
+};
 
-export async function run() {
-    console.log("🤖 Moigye Yield Agent: Starting simulation...");
+const APY_API_AAVE = "https://api.mock-defi.com/aave/apy";
+const APY_API_COMPOUND = "https://api.mock-defi.com/compound/apy";
 
-    // 1. Read MoigyeVault state
-    const currentRoundId = await evm.read({
-        address: MOIGYE_VAULT_ADDRESS,
-        abi: ["function currentRoundId() view returns (uint256)"],
-        functionName: "currentRoundId",
-        args: [],
-    });
+const CHAIN_SELECTOR = 16015286601757825753n; // Ethereum Sepolia
 
-    const vaultBalance = await evm.read({
-        address: USDC_ADDRESS,
-        abi: ["function balanceOf(address) view returns (uint256)"],
-        functionName: "balanceOf",
-        args: [MOIGYE_VAULT_ADDRESS],
-    });
+const VAULT_ABI = parseAbi([
+    "function optimizeYield(address target, uint256 amount) external",
+    "function balanceOf(address account) external view returns (uint256)"
+]);
 
-    console.log(`📊 Round ${currentRoundId}: Vault has ${vaultBalance} USDC idle.`);
+const USDC_ABI = parseAbi([
+    "function balanceOf(address account) external view returns (uint256)"
+]);
 
-    // 2. Yield Strategy: If idle > 1000 USDC, move to Aave
-    if (BigInt(vaultBalance as string) > BigInt(1000 * 1e6)) {
-        console.log("🚀 High idle capital detected. Optimizing yield via Mock Aave...");
+// --- Workflow ---
 
-        // In CRE simulation, we propose a transaction
-        await evm.write({
-            address: MOIGYE_VAULT_ADDRESS,
-            abi: ["function optimizeYield(address,uint256)"],
-            functionName: "optimizeYield",
-            args: [MOCK_AAVE_POOL, vaultBalance],
-        });
+export const workflow = [
+    cre.handler(
+        // Trigger: Every 1 hour
+        new CronCapability().trigger({ schedule: "0 * * * *" }),
 
-        console.log("✅ Yield optimization transaction submitted.");
-    } else {
-        console.log("💤 Capital utilization looks good. Monitoring...");
-    }
+        async (runtime) => {
+            runtime.log("🚀 Moigye Yield Agent: Starting autonomous rebalance check...");
 
-    // 3. Round End Check: If round period elapsed, trigger withdrawal from strategy
-    // (In real CRE, we'd check block numbers or timestamps)
-    console.log("🔍 Checking round settlement status...");
+            const evm = new EVMClient(CHAIN_SELECTOR);
 
-    // Simulate triggering round end if conditions met
-    const shouldWithdraw = true; // For simulation purposes
+            // 1. Fetch Off-Chain APY Rates
+            runtime.log("🔍 Fetching real-time APY rates from DeFi protocols...");
 
-    if (shouldWithdraw) {
-        console.log("🏁 Round ending. Triggering withdrawal from yield pool to Vault...");
-        // Mock withdrawal from Aave back to MoigyeVault
-    }
+            const fetchAPY = async (url: string, name: string) => {
+                // Mocking the response for simulation
+                const mockRates: Record<string, number> = {
+                    [APY_API_AAVE]: 5.2,
+                    [APY_API_COMPOUND]: 4.8
+                };
+                const apy = mockRates[url] || 0;
+                runtime.log(`📈 ${name} Current APY: ${apy}%`);
+                return apy;
+            };
 
-    return {
-        status: "COMPLETED",
-        roundId: currentRoundId,
-        optimized: true
-    };
-}
+            const aaveApy = await fetchAPY(APY_API_AAVE, "Aave V3");
+            const compoundApy = await fetchAPY(APY_API_COMPOUND, "Compound V3");
+
+            // 2. Check On-Chain State: Idle USDC in MoigyeVault
+            runtime.log(`📡 Querying MoigyeVault (${MOIGYE_VAULT_ADDRESS}) for idle liquidity...`);
+
+            const balanceData = await evm.callContract(runtime, {
+                call: encodeCallMsg({
+                    from: MOIGYE_VAULT_ADDRESS as `0x${string}`, // View as self
+                    to: USDC_ADDRESS as `0x${string}`,
+                    data: encodeFunctionData({
+                        abi: USDC_ABI,
+                        functionName: "balanceOf",
+                        args: [MOIGYE_VAULT_ADDRESS as `0x${string}`]
+                    })
+                })
+            }).result();
+
+            // balanceData.data is Uint8Array
+            const idleBalance = balanceData.data ? hexToBigInt(toHex(balanceData.data)) : 0n;
+            runtime.log(`💰 Vault Status: ${formatUnits(idleBalance, 6)} USDC idle.`);
+
+            // 3. Autonomous Decision Engine
+            if (idleBalance > 1000n * 10n ** 6n) {
+                const bestProtocol = aaveApy >= compoundApy ? "AAVE" : "COMPOUND";
+                const targetAddress = PROTOCOLS[bestProtocol];
+
+                runtime.log(`⚖️ Decision: High liquidity detected. Routing to ${bestProtocol} (${targetAddress}) for optimal yield.`);
+
+                // 4. Execution: Submit Rebalance Report
+                runtime.log("✍️ Generating settlement report for on-chain execution...");
+
+                const reportPayload = encodeFunctionData({
+                    abi: VAULT_ABI,
+                    functionName: "optimizeYield",
+                    args: [targetAddress as `0x${string}`, idleBalance]
+                });
+
+                // Generate signing request for the DON
+                const report = runtime.report(prepareReportRequest(reportPayload)).result();
+
+                const tx = await evm.writeReport(runtime, {
+                    receiver: MOIGYE_VAULT_ADDRESS,
+                    report: report
+                }).result();
+
+                if (tx.txStatus === TxStatus.SUCCESS) {
+                    runtime.log("✅ Settlement Executed! Funds migrated to yield strategy.");
+                } else {
+                    runtime.log(`❌ Settlement Status: ${tx.txStatus}`);
+                }
+            } else {
+                runtime.log("💤 Liquidity threshold not met (< 1000 USDC). Maintaining current state.");
+            }
+
+            runtime.log("🏁 Cycle Complete. Next check in 60 minutes.");
+
+            return {
+                timestamp: runtime.now().toISOString(),
+                status: "FINISHED",
+                decision: idleBalance > 1000n * 10n ** 6n ? "REBALANCED" : "IDLE"
+            };
+        }
+    )
+];
