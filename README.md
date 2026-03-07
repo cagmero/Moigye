@@ -50,10 +50,10 @@ Moigye (Korean for "gathering") is a decentralized, cross-chain Rotating Savings
 
 ### Deployed Contracts (Ethereum Sepolia)
 
-| Contract | Address |
-|---|---|
-| **MoigyeVault** | `0x2279B181aA564344444444444444444444444444` |
-| **MoigyeUSD** | `0x4ed7c06655c1b138c84014c119902c0039725807` |
+| Contract | Address | Explorer |
+|---|---|---|
+| **MoigyeVault** | `0xF3A7e3D340258aeE748f2B773c2C01d1B5d84b00` | [View](https://sepolia.etherscan.io/address/0xF3A7e3D340258aeE748f2B773c2C01d1B5d84b00) |
+| **MoigyeUSD** | `0x4ed7c06655c1b138c84014c119902c0039725807` | [View](https://sepolia.etherscan.io/address/0x4ed7c06655c1b138c84014c119902c0039725807) |
 
 ### Smart Contracts
 1. Install dependencies: `pnpm install`
