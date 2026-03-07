@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const cc_next_testnet = {
-    id: 102033,
+    id: 102031,
     name: 'CCNext-Testnet',
     nativeCurrency: { name: 'Creditcoin', symbol: 'CTC', decimals: 18 },
     rpcUrls: { default: { http: ['https://rpc.usc-testnet.creditcoin.network'] } },
@@ -51,7 +51,7 @@ async function main() {
         eventName: 'WinnerSelected',
         onLogs: async (logs) => {
             for (const log of logs) {
-                const { roundId, winner, payout } = log.args as any;
+                const { roundId, winner, payout } = (log as any).args;
                 const nonce = BigInt(Date.now()); // Hackathon simple nonce
 
                 console.log(`\n🏆 Winner Selected for Round ${roundId}: ${winner}`);
@@ -67,6 +67,7 @@ async function main() {
 
                     console.log(`Signing Payout for ${winner}...`);
                     const signature = await sepoliaWallet.signTypedData({
+                        account,
                         domain,
                         types: TYPES,
                         primaryType: 'Payout',

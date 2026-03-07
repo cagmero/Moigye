@@ -12,8 +12,8 @@ import { PROVER_ABI } from './constants/abi.js';
 import { QueryBuilder, QueryableFields } from '@gluwa/cc-next-query-builder';
 type ChainQuery = any;
 
-const LiquidityVaultABI = JSON.parse(
-    readFileSync(new URL('../../artifacts/contracts/LiquidityVault.sol/LiquidityVault.json', import.meta.url), 'utf-8')
+const MoigyeVaultABI = JSON.parse(
+    readFileSync(new URL('../../artifacts/contracts/MoigyeVault.sol/MoigyeVault.json', import.meta.url), 'utf-8')
 ).abi;
 const BLOCK_LAG: bigint = 3n;
 
@@ -30,7 +30,7 @@ async function main() {
 
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const cc_next_testnet = {
-        id: 102033,
+        id: 102031,
         name: 'CCNext-Testnet',
         nativeCurrency: { name: 'Creditcoin', symbol: 'CTC', decimals: 18 },
         rpcUrls: { default: { http: ['https://rpc.usc-testnet.creditcoin.network'] } },
@@ -48,7 +48,7 @@ async function main() {
 
     console.log('Building query...');
     const builder = QueryBuilder.createFromTransaction(tx as any, receipt as any);
-    builder.setAbiProvider(async () => JSON.stringify(LiquidityVaultABI));
+    builder.setAbiProvider(async () => JSON.stringify(MoigyeVaultABI));
 
     builder.addStaticField(QueryableFields.RxStatus).addStaticField(QueryableFields.TxFrom).addStaticField(QueryableFields.TxTo);
     await builder.eventBuilder('LiquidityDeposited', () => true, (b: any) =>

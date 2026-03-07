@@ -6,12 +6,12 @@ import { encodeFunctionData, parseAbi, formatUnits, toHex, hexToBigInt } from "v
  * 
  * Target: DeFi & Tokenization Hackathon
  * Description: Dynamically aggregates yield by comparing off-chain APY rates
- * and rebalancing idle USDC from MoigyeVault (Sepolia) to the highest-yielding protocol.
+ * and rebalancing idle MoigyeUSD from MoigyeVault (Sepolia) to the highest-yielding protocol.
  */
 
 // --- Configuration ---
-const MOIGYE_VAULT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+const MOIGYE_VAULT_ADDRESS = "0xF3A7e3D340258aeE748f2B773c2C01d1B5d84b00";
+const MOIGYE_USD_ADDRESS = "0x4ed7c06655c1b138c84014c119902c0039725807";
 
 const PROTOCOLS = {
     AAVE: "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
@@ -28,7 +28,7 @@ const VAULT_ABI = parseAbi([
     "function balanceOf(address account) external view returns (uint256)"
 ]);
 
-const USDC_ABI = parseAbi([
+const MOIGYE_USD_ABI = parseAbi([
     "function balanceOf(address account) external view returns (uint256)"
 ]);
 
@@ -61,15 +61,15 @@ export const workflow = [
             const aaveApy = await fetchAPY(APY_API_AAVE, "Aave V3");
             const compoundApy = await fetchAPY(APY_API_COMPOUND, "Compound V3");
 
-            // 2. Check On-Chain State: Idle USDC in MoigyeVault
+            // 2. Check On-Chain State: Idle MoigyeUSD in MoigyeVault
             runtime.log(`📡 Querying MoigyeVault (${MOIGYE_VAULT_ADDRESS}) for idle liquidity...`);
 
             const balanceData = await evm.callContract(runtime, {
                 call: encodeCallMsg({
                     from: MOIGYE_VAULT_ADDRESS as `0x${string}`, // View as self
-                    to: USDC_ADDRESS as `0x${string}`,
+                    to: MOIGYE_USD_ADDRESS as `0x${string}`,
                     data: encodeFunctionData({
-                        abi: USDC_ABI,
+                        abi: MOIGYE_USD_ABI,
                         functionName: "balanceOf",
                         args: [MOIGYE_VAULT_ADDRESS as `0x${string}`]
                     })
@@ -78,7 +78,7 @@ export const workflow = [
 
             // balanceData.data is Uint8Array
             const idleBalance = balanceData.data ? hexToBigInt(toHex(balanceData.data)) : 0n;
-            runtime.log(`💰 Vault Status: ${formatUnits(idleBalance, 6)} USDC idle.`);
+            runtime.log(`💰 Vault Status: ${formatUnits(idleBalance, 6)} MoigyeUSD idle.`);
 
             // 3. Autonomous Decision Engine
             if (idleBalance > 1000n * 10n ** 6n) {
@@ -110,7 +110,7 @@ export const workflow = [
                     runtime.log(`❌ Settlement Status: ${tx.txStatus}`);
                 }
             } else {
-                runtime.log("💤 Liquidity threshold not met (< 1000 USDC). Maintaining current state.");
+                runtime.log("💤 Liquidity threshold not met (< 1000 MoigyeUSD). Maintaining current state.");
             }
 
             runtime.log("🏁 Cycle Complete. Next check in 60 minutes.");

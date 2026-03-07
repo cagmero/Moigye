@@ -49,9 +49,9 @@ cre simulate yield-agent.wasm \
 }
 ```
 
-## Strategy Logic
+### Strategy Logic
 The agent follows a strict **Autonomous Yield Aggregation** strategy:
 1. **Trigger**: Hourly Cron check.
 2. **Fetch**: Pulls live APY rates from Aave and Compound mock APIs.
 3. **Analyze**: Compares rates and checks `MoigyeVault` idle balance.
-4. **Execute**: If idle balance > 1000 USDC, it calls `optimizeYield` on the Hub contract to migrate funds to the higher-yielding protocol.
+4. **Execute**: If idle balance > 1000 MoigyeUSD, it calls `optimizeYield` on the Hub contract to migrate funds to the higher-yielding protocol.
