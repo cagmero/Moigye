@@ -98,7 +98,7 @@ contract MoigyeVault is ReentrancyGuard, Ownable, EIP712 {
 
         payoutProcessed[payoutId] = true;
 
-        uint256 payoutImmediate = (amount * 70) / 100;
+        uint256 payoutImmediate = (amount * 50) / 100;
         uint256 lockedBond = amount - payoutImmediate;
 
         lockedBonds[roundId][winner] += lockedBond;

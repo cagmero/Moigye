@@ -6,20 +6,25 @@ import { encodeFunctionData, parseAbi, formatUnits, toHex, hexToBigInt } from "v
  * 
  * Target: DeFi & Tokenization Hackathon
  * Description: Dynamically aggregates yield by comparing off-chain APY rates
- * and rebalancing idle MoigyeUSD from MoigyeVault (Sepolia) to the highest-yielding protocol.
+ * and rebalancing idle MoigyeUSD from MoigyeVault to the highest-yielding protocol.
  */
 
 // --- Configuration ---
-const MOIGYE_VAULT_ADDRESS = "0xF3A7e3D340258aeE748f2B773c2C01d1B5d84b00";
-const MOIGYE_USD_ADDRESS = "0x4ed7c06655c1b138c84014c119902c0039725807";
+// MoigyeVault on Sepolia (spoke chain) — update with deployed vault address
+const MOIGYE_VAULT_ADDRESS = process.env.MOIGYE_VAULT_ADDRESS ?? "0xF3A7e3D340258aeE748f2B773c2C01d1B5d84b00";
+// mUSD token — on CTC testnet (hub) or Sepolia (spoke depending on config)
+const MOIGYE_USD_ADDRESS = process.env.MOIGYE_USD_ADDRESS ?? "0xb6414BD71C42290892DadcEb4616d8A09628c0cf";
 
 const PROTOCOLS = {
-    AAVE: "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
-    COMPOUND: "0xc00e94Cb662C3520282E6f5717214004A7f26888"
+    AAVE: "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2", // Aave V3 Pool on Sepolia
+    COMPOUND: "0xc3d688B66703497DAA19211EEdff47f25384cdc3", // Compound V3 USDC on Sepolia
 };
 
-const APY_API_AAVE = "https://api.mock-defi.com/aave/apy";
-const APY_API_COMPOUND = "https://api.mock-defi.com/compound/apy";
+// Real DeFi Llama Yield API — no API key required, publicly accessible
+const DEFI_LLAMA_POOL_API = "https://yields.llama.fi/pools";
+// Specific pool IDs from DeFi Llama for Aave V3 / Compound on Sepolia-equivalent
+const AAVE_POOL_ID = "a349fea4-d780-4e16-973e-70ca9b606db3"; // Aave V3 USDC Ethereum
+const COMPOUND_POOL_ID = "8a20fa32-4786-4c0e-b3c2-9a959a6e1f4b"; // Compound V3 USDC Ethereum
 
 const CHAIN_SELECTOR = 16015286601757825753n; // Ethereum Sepolia
 
@@ -44,22 +49,24 @@ export const workflow = [
 
             const evm = new EVMClient(CHAIN_SELECTOR);
 
-            // 1. Fetch Off-Chain APY Rates
-            runtime.log("🔍 Fetching real-time APY rates from DeFi protocols...");
+            // 1. Fetch Real APY Rates from DeFi Llama (no API key required)
+            runtime.log("🔍 Fetching real-time APY rates from DeFi Llama yield API...");
 
-            const fetchAPY = async (url: string, name: string) => {
-                // Mocking the response for simulation
-                const mockRates: Record<string, number> = {
-                    [APY_API_AAVE]: 5.2,
-                    [APY_API_COMPOUND]: 4.8
-                };
-                const apy = mockRates[url] || 0;
-                runtime.log(`📈 ${name} Current APY: ${apy}%`);
-                return apy;
+            const fetchPoolAPY = async (poolId: string, name: string): Promise<number> => {
+                try {
+                    const res = await fetch(`${DEFI_LLAMA_POOL_API}?pool=${poolId}`);
+                    const json = await res.json() as { data: Array<{ apy?: number }> };
+                    const apy = json?.data?.[0]?.apy ?? 0;
+                    runtime.log(`📈 ${name} Real APY: ${apy.toFixed(2)}%`);
+                    return apy;
+                } catch (err) {
+                    runtime.log(`⚠️  Failed to fetch ${name} APY, defaulting to 0. Error: ${err}`);
+                    return 0;
+                }
             };
 
-            const aaveApy = await fetchAPY(APY_API_AAVE, "Aave V3");
-            const compoundApy = await fetchAPY(APY_API_COMPOUND, "Compound V3");
+            const aaveApy = await fetchPoolAPY(AAVE_POOL_ID, "Aave V3 USDC");
+            const compoundApy = await fetchPoolAPY(COMPOUND_POOL_ID, "Compound V3 USDC");
 
             // 2. Check On-Chain State: Idle MoigyeUSD in MoigyeVault
             runtime.log(`📡 Querying MoigyeVault (${MOIGYE_VAULT_ADDRESS}) for idle liquidity...`);

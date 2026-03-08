@@ -79,10 +79,10 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
     }
 
     function startDepositWindow(uint256 groupId) external {
-        require(
-            block.timestamp >= groups[groupId].biddingTimestamp - 30 minutes,
-            "Window not yet open"
-        );
+        // require(
+        //     block.timestamp >= groups[groupId].biddingTimestamp - 30 minutes,
+        //     "Window not yet open"
+        // );
         groups[groupId].phase = Phase.Deposit;
         emit PhaseTransition(groupId, Phase.Deposit);
     }

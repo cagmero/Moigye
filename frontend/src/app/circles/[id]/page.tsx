@@ -6,6 +6,8 @@ import { Gavel, Trophy, AlertCircle, ArrowLeft, Users, DollarSign, Play, Loader2
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { GYE_MANAGER_CONTRACT, BIDDING_ENGINE_CONTRACT } from "@/lib/contracts";
 import Link from "next/link";
+import VaultPanel from "@/components/VaultPanel";
+
 
 export default function CircleRoomPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = React.use(params);
@@ -57,6 +59,42 @@ export default function CircleRoomPage({ params }: { params: Promise<{ id: strin
         });
     };
 
+    const handleOpenDeposits = () => {
+        writeContract({
+            ...BIDDING_ENGINE_CONTRACT,
+            functionName: "startDepositWindow",
+            args: [groupId],
+            gas: BigInt(200000),
+        });
+    };
+
+    const handleStartBidding = () => {
+        writeContract({
+            ...BIDDING_ENGINE_CONTRACT,
+            functionName: "startRound1",
+            args: [groupId],
+            gas: BigInt(200000),
+        });
+    };
+
+    const handleEndBidding = () => {
+        writeContract({
+            ...BIDDING_ENGINE_CONTRACT,
+            functionName: "endRound1",
+            args: [groupId],
+            gas: BigInt(200000),
+        });
+    };
+
+    const handleFinalizeRound = () => {
+        writeContract({
+            ...BIDDING_ENGINE_CONTRACT,
+            functionName: "transitionAfterVoting",
+            args: [groupId],
+            gas: BigInt(300000),
+        });
+    };
+
     // Loading state
     if (gyeLoading || !gyeGroup) {
         return (
@@ -68,7 +106,7 @@ export default function CircleRoomPage({ params }: { params: Promise<{ id: strin
 
     // Destructure GyeManager group (9 fields: groupId, moderator, fixedDeposit, minScoreRequired, maxParticipants, biddingDate, isPublic, isActive, started)
     const gyeData = gyeGroup as readonly [bigint, string, bigint, bigint, bigint, bigint, boolean, boolean, boolean];
-    const [gGroupId, moderator, fixedDeposit, , maxParticipants, biddingDate, isPublic, isActive, started] = gyeData;
+    const [gGroupId, moderator, fixedDeposit, , maxParticipants, biddingDate, isPublic, , started] = gyeData;
 
     // Destructure BiddingEngine group (8 fields)
     const bidData = biddingGroup as readonly [bigint, bigint, bigint, bigint, string, number, bigint, bigint] | undefined;
@@ -155,8 +193,62 @@ export default function CircleRoomPage({ params }: { params: Promise<{ id: strin
                             </motion.button>
                         )}
                         {moderator?.toLowerCase() === address?.toLowerCase() && auctionStarted && (
-                            <div className="w-full flex items-center justify-center gap-2 py-4 bg-emerald-50 text-emerald-700 font-black rounded-2xl border border-emerald-100">
-                                <CheckCircle2 className="w-5 h-5" /> Auction is Live
+                            <div className="space-y-3">
+                                {/* Phase indicator */}
+                                <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-slate-400 px-1">
+                                    <span>Auction Phase</span>
+                                    <span className={`px-3 py-1 rounded-full ${phase === 0 ? "bg-slate-100 text-slate-600" :
+                                        phase === 1 ? "bg-amber-50 text-amber-700" :
+                                            phase === 2 ? "bg-emerald-50 text-emerald-700" :
+                                                "bg-blue-50 text-blue-700"
+                                        }`}>
+                                        {phaseNames[phase] ?? "Unknown"}
+                                    </span>
+                                </div>
+                                {/* Phase 0: Idle → open deposit window */}
+                                {phase === 0 && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                        onClick={handleOpenDeposits}
+                                        disabled={isSubmitting || isConfirming}
+                                        className="w-full flex items-center justify-center gap-2 py-3 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl transition-colors disabled:opacity-60"
+                                    >
+                                        {(isSubmitting || isConfirming) ? <><Loader2 className="w-4 h-4 animate-spin" /> Working...</> : "→ Open Deposit Window"}
+                                    </motion.button>
+                                )}
+                                {/* Phase 1: Deposit → start Round 1 bidding */}
+                                {phase === 1 && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                        onClick={handleStartBidding}
+                                        disabled={isSubmitting || isConfirming}
+                                        className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl transition-colors disabled:opacity-60"
+                                    >
+                                        {(isSubmitting || isConfirming) ? <><Loader2 className="w-4 h-4 animate-spin" /> Working...</> : <><Play className="w-4 h-4 fill-current" /> Start Round 1 Bidding</>}
+                                    </motion.button>
+                                )}
+                                {/* Phase 2: Active Bidding */}
+                                {phase === 2 && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                        onClick={handleEndBidding}
+                                        disabled={isSubmitting || isConfirming}
+                                        className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white font-black rounded-2xl transition-colors disabled:opacity-60"
+                                    >
+                                        {(isSubmitting || isConfirming) ? <><Loader2 className="w-4 h-4 animate-spin" /> Stopping...</> : "Stop Bidding & Start Voting"}
+                                    </motion.button>
+                                )}
+                                {/* Phase 3: Voting */}
+                                {phase === 3 && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                        onClick={handleFinalizeRound}
+                                        disabled={isSubmitting || isConfirming}
+                                        className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl transition-colors disabled:opacity-60"
+                                    >
+                                        {(isSubmitting || isConfirming) ? <><Loader2 className="w-4 h-4 animate-spin" /> Finalizing...</> : "Finalize Round & Select Winner"}
+                                    </motion.button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -181,54 +273,59 @@ export default function CircleRoomPage({ params }: { params: Promise<{ id: strin
                     )}
                 </div>
 
-                {/* Right: Bid Panel */}
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="glass-morphism rounded-[3rem] p-8 flex flex-col justify-between space-y-6 border border-white/40"
-                >
-                    <div className="space-y-3">
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                            <Gavel className="w-6 h-6 text-blue-600" /> Place Bid
-                        </h3>
-                        <p className="text-sm text-slate-500 font-medium">Higher discount = higher win chance, lower payout.</p>
-                    </div>
+                {/* Right: Bid Panel & Vault */}
+                <div className="space-y-6">
+                    <VaultPanel groupId={groupId} fixedDeposit={fixedDeposit} />
 
-                    {!auctionStarted ? (
-                        <div className="p-5 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3 text-amber-700">
-                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs font-bold">Auction hasn't started yet. The moderator needs to call <code>startAuction</code> to open the bidding window.</p>
-                        </div>
-                    ) : !isBiddingActive ? (
-                        <div className="p-5 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3 text-amber-700">
-                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs font-bold">Bidding is not currently active. Current phase: <strong>{phaseNames[phase]}</strong></p>
-                        </div>
-                    ) : (
-                        <div className="relative">
-                            <DollarSign className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
-                            <input
-                                type="number"
-                                value={myBid}
-                                onChange={(e) => setMyBid(e.target.value)}
-                                placeholder="0"
-                                className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-slate-900 transition-all font-black text-2xl"
-                            />
-                        </div>
-                    )}
-
-                    <motion.button
-                        whileHover={{ scale: isBiddingActive ? 1.02 : 1 }}
-                        whileTap={{ scale: isBiddingActive ? 0.98 : 1 }}
-                        onClick={handlePlaceBid}
-                        disabled={!isBiddingActive || isSubmitting || isConfirming}
-                        className={`w-full premium-button py-5 text-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="glass-morphism rounded-[3rem] p-8 flex flex-col justify-between space-y-6 border border-white/40"
                     >
-                        {isSubmitting ? "Sending..." : isConfirming ? "Confirming..." : "Submit Bid"}
-                    </motion.button>
-                </motion.div>
+
+                        <div className="space-y-3">
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                <Gavel className="w-6 h-6 text-blue-600" /> Place Bid
+                            </h3>
+                            <p className="text-sm text-slate-500 font-medium">Higher discount = higher win chance, lower payout.</p>
+                        </div>
+
+                        {!auctionStarted ? (
+                            <div className="p-5 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3 text-amber-700">
+                                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                <p className="text-xs font-bold">Auction hasn't started yet. The moderator needs to call <code>startAuction</code> to open the bidding window.</p>
+                            </div>
+                        ) : !isBiddingActive ? (
+                            <div className="p-5 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3 text-amber-700">
+                                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                <p className="text-xs font-bold">Bidding is not currently active. Current phase: <strong>{phaseNames[phase]}</strong></p>
+                            </div>
+                        ) : (
+                            <div className="relative">
+                                <DollarSign className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
+                                <input
+                                    type="number"
+                                    value={myBid}
+                                    onChange={(e) => setMyBid(e.target.value)}
+                                    placeholder="0"
+                                    className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-slate-900 transition-all font-black text-2xl"
+                                />
+                            </div>
+                        )}
+
+                        <motion.button
+                            whileHover={{ scale: isBiddingActive ? 1.02 : 1 }}
+                            whileTap={{ scale: isBiddingActive ? 0.98 : 1 }}
+                            onClick={handlePlaceBid}
+                            disabled={!isBiddingActive || isSubmitting || isConfirming}
+                            className={`w-full premium-button py-5 text-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                            {isSubmitting ? "Sending..." : isConfirming ? "Confirming..." : "Submit Bid"}
+                        </motion.button>
+                    </motion.div>
+                </div>
             </div>
-        </div>
+        </div >
     );
 }
 

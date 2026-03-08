@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Providers from "@/components/Providers";
+import MUSDWidget from "@/components/MUSDWidget";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -30,9 +31,9 @@ export default function RootLayout({
           <main className="pt-24 min-h-screen">
             {children}
           </main>
+          <MUSDWidget />
         </Providers>
       </body>
     </html>
   );
 }
-

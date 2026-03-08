@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { Gavel, Trophy, ArrowUpRight, CheckCircle2, XCircle, DollarSign, ShieldCheck, Lock, Loader2 } from "lucide-react";
 import { useUserSync } from "@/hooks/useUserSync";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { GYE_MANAGER_CONTRACT } from "@/lib/contracts";
 import { supabase } from "@/utils/supabaseClient";
 
 interface Bid {
@@ -21,26 +22,19 @@ export default function LiveArena({ groupId }: { groupId: number }) {
     const [isSettling, setIsSettling] = useState(false);
     const { address } = useAccount();
 
-    // 1. Fetch auction state and current round from Supabase
-    useEffect(() => {
-        const fetchGroupState = async () => {
-            // Ensure group row exists, create if not
-            const { data } = await supabase
-                .from("groups")
-                .select("is_auction_started")
-                .eq("group_id", groupId)
-                .maybeSingle();
+    // 1. Fetch auction state from the contract is more reliable for state
+    const { data: gyeGroup } = useReadContract({
+        ...GYE_MANAGER_CONTRACT,
+        functionName: "groups",
+        args: [BigInt(groupId)],
+    });
 
-            if (data === null) {
-                // Row doesn't exist yet — insert it with defaults
-                await supabase.from("groups").insert({ group_id: groupId, moderator: "", is_auction_started: false });
-                setIsAuctionStarted(false);
-            } else {
-                setIsAuctionStarted(data.is_auction_started);
-            }
-        };
-        fetchGroupState();
-    }, [groupId]);
+    useEffect(() => {
+        if (gyeGroup) {
+            const [, , , , , , , , started] = gyeGroup as any;
+            setIsAuctionStarted(started);
+        }
+    }, [gyeGroup]);
 
     // 2. Subscribe to groups table so bidding unlocks the moment creator starts it
     useEffect(() => {
