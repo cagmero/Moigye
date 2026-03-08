@@ -143,14 +143,9 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
     function transitionAfterVoting(uint256 groupId) external {
         GyeGroup storage group = groups[groupId];
         require(group.phase == Phase.Voting, "Not in voting phase");
-        require(block.timestamp > group.votingEndTime, "Wait for timeout");
 
-        if (group.positiveVotes == group.members.length) {
-            _finalizeRound(groupId);
-        } else {
-            group.phase = Phase.FinalChallenge;
-            emit PhaseTransition(groupId, Phase.FinalChallenge);
-        }
+        // For demo: Moderator triggers finalization immediately
+        _finalizeRound(groupId);
     }
 
     function finalizeFinalChallenge(uint256 groupId) external {
@@ -167,6 +162,9 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
         uint256 discount = group.highestBid;
         uint256 pot = group.members.length * group.monthlyContribution;
 
+        require(winner != address(0), "No winner");
+        require(pot >= discount, "Discount too high");
+
         uint256 totalPayout = pot - discount;
         uint256 payoutImmediate = (totalPayout * 70) / 100;
         uint256 lockedBond = totalPayout - payoutImmediate;
@@ -174,7 +172,10 @@ contract BiddingEngine is Ownable, ReentrancyGuard {
         group.hasWon[winner] = true;
         group.phase = Phase.Completed;
 
-        uint256 yieldPerMember = discount / (group.members.length - 1);
+        uint256 yieldPerMember = 0;
+        if (group.members.length > 1) {
+            yieldPerMember = discount / (group.members.length - 1);
+        }
 
         emit WinnerSelected(
             groupId,

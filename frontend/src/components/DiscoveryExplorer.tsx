@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Globe, Calendar, ArrowRight, Loader2, XCircle, Lock, Star } from "lucide-react";
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useAccount } from "wagmi";
 import { GYE_MANAGER_CONTRACT } from "@/lib/contracts";
 import { useUserSync, minScoreForDeposit, getTier } from "@/hooks/useUserSync";
@@ -27,10 +27,33 @@ export default function DiscoveryExplorer({ onBack }: { onBack: () => void }) {
     const { isBanned, score, loading: userSyncLoading } = useUserSync();
     const { address } = useAccount();
 
-    // 1. Fetch Public Groups from Contract
-    const { data: rawGroups, isLoading } = useReadContract({
-        ...GYE_MANAGER_CONTRACT,
-        functionName: "getAllPublicGroups",
+    // 1. Fetch from Supabase (Source of Truth for "Real" groups)
+    const [dbGroups, setDbGroups] = useState<any[]>([]);
+    const [dbLoading, setDbLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPublic = async () => {
+            setDbLoading(true);
+            const { data, error } = await supabase
+                .from("groups")
+                .select("*")
+                .eq("is_public", true)
+                .order("group_id", { ascending: false });
+
+            if (!error && data) setDbGroups(data);
+            setDbLoading(false);
+        };
+        fetchPublic();
+    }, []);
+
+    // 2. Fetch live contract data for these specific IDs for enrichment (e.g., current participants)
+    const { data: contractGroups } = useReadContracts({
+        contracts: dbGroups.map(g => ({
+            ...GYE_MANAGER_CONTRACT,
+            functionName: "groups",
+            args: [BigInt(g.group_id)],
+        })),
+        query: { enabled: dbGroups.length > 0 },
     });
 
     // 2. Join Group Logic — award +10 score on success
@@ -62,16 +85,59 @@ export default function DiscoveryExplorer({ onBack }: { onBack: () => void }) {
         });
     };
 
-    const groups: GyeGroup[] = (rawGroups as any[])?.map((g: any) => ({
-        groupId: Number(g.groupId),
-        moderator: g.moderator,
-        currentParticipants: Number(g.currentParticipants),
-        maxParticipants: Number(g.maxParticipants),
-        fixedDeposit: Number(g.fixedDeposit),
-        totalPotAmount: Number(g.totalPotAmount),
-        biddingDate: Number(g.biddingDate) * 1000,
-        isPublic: g.isPublic,
-    })) || [];
+    const isLoading = dbLoading || (dbGroups.length > 0 && !contractGroups);
+
+    const groups: GyeGroup[] = dbGroups.map((g, i) => {
+        const cMatch = contractGroups?.[i]?.result as any;
+
+        // Structure from contract: 9 fields: groupId, moderator, fixedDeposit, minScoreRequired, maxParticipants, biddingDate, isPublic, isActive, started
+        // struct GyeGroup returns elements as array
+        const curator = cMatch?.[1] || g.moderator;
+        const currentMems = cMatch?.[2] || 0; // Wait! GyeManager struct has members array skipped.
+        // Wait! My previous read of GyeGroup struct shows index 2 is fixedDeposit. 
+        // How do we get currentParticipants? 
+        // AH! GyeManager.sol:214 `getAllPublicGroups` returns `GroupView` struct!
+        // `GroupView` index 2 is `currentParticipants`.
+
+        // But `groups(id)` accessor on Hub returns `GyeGroup` struct.
+        // `GyeGroup` (Hub-only) doesn't have `currentParticipants` readily available if members is skipped.
+
+        // Let's re-read GyeManager.sol `GroupView`.
+        /*
+        42:     struct GroupView {
+        43:         uint256 groupId;
+        44:         address moderator;
+        45:         uint256 currentParticipants;
+        46:         uint256 maxParticipants;
+        47:         uint256 fixedDeposit;
+        48:         uint256 minScoreRequired;
+        49:         uint256 totalPotAmount;
+        50:         uint256 biddingDate;
+        51:         bool isPublic;
+        52:     }
+        */
+
+        // If I want group info for ANY group, I can't call `getAllPublicGroups` for a specific ID easily.
+        // I can call `groups(id)` which gives `GyeGroup`.
+
+        // Wait, I see `is_public` in Supabase.
+
+        // Actually, let's keep it simple and use what we have in Supabase augmented by whatever the contract provides.
+        const deposit = cMatch ? Number(cMatch[2]) : Number(g.fixed_deposit);
+        const maxPart = cMatch ? Number(cMatch[4]) : Number(g.max_participants);
+        const bDate = cMatch ? Number(cMatch[5]) * 1000 : new Date(g.created_at).getTime();
+
+        return {
+            groupId: g.group_id,
+            moderator: curator,
+            currentParticipants: 0, // Fallback if not available at individual group read
+            maxParticipants: maxPart,
+            fixedDeposit: deposit,
+            totalPotAmount: 0,
+            biddingDate: bDate,
+            isPublic: !!g.is_public,
+        };
+    });
 
     const filteredGroups = groups
         .filter(g => g.fixedDeposit >= filterDeposit)

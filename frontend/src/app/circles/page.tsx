@@ -31,19 +31,31 @@ export default function CirclesPage() {
     useEffect(() => {
         const fetchDb = async () => {
             setDbLoading(true);
-            const { data, error } = await supabase
-                .from("groups")
-                .select("group_id, moderator, fixed_deposit, max_participants, is_public")
-                .order("group_id", { ascending: false });
+            try {
+                const { data, error } = await supabase
+                    .from("groups")
+                    .select("group_id, moderator, fixed_deposit, max_participants, is_public")
+                    .order("group_id", { ascending: false });
 
-            if (!error && data) {
-                setDbCircles(data.map(row => ({
-                    id: String(row.group_id),
-                    moderator: row.moderator || "",
-                    fixedDeposit: Number(row.fixed_deposit) || 0,
-                    maxParticipants: Number(row.max_participants) || 0,
-                    isPublic: !!row.is_public
-                })));
+                if (error) {
+                    console.error("Supabase fetch error:", error);
+                    setDbCircles([]);
+                } else if (data && data.length > 0) {
+                    console.log("Fetched from Supabase:", data);
+                    setDbCircles(data.map(row => ({
+                        id: String(row.group_id),
+                        moderator: row.moderator || "",
+                        fixedDeposit: Number(row.fixed_deposit) || 0,
+                        maxParticipants: Number(row.max_participants) || 0,
+                        isPublic: !!row.is_public
+                    })));
+                } else {
+                    console.log("No groups found in Supabase");
+                    setDbCircles([]);
+                }
+            } catch (err) {
+                console.error("Error fetching from Supabase:", err);
+                setDbCircles([]);
             }
             setDbLoading(false);
         };
@@ -56,9 +68,12 @@ export default function CirclesPage() {
         functionName: "nextGroupId",
     });
 
-    const contractIds = Array.from({ length: Number(nextGroupId || 0) }, (_, i) => BigInt(i));
-    const allIds = Array.from(new Set([...contractIds, ...dbCircles.map(c => BigInt(c.id))]))
-        .sort((a, b) => Number(b - a));
+    // 2. Compute all unique IDs from Supabase
+    const allIds = React.useMemo(() => {
+        if (dbCircles.length === 0) return [];
+        return dbCircles.map(c => BigInt(c.id))
+            .sort((a, b) => (b > a ? 1 : -1));
+    }, [dbCircles]);
 
     // 3. Fetch Contract Data for ALL discovered IDs
     const { data: groupsData, isLoading: fetchingGroups } = useReadContracts({
@@ -79,40 +94,30 @@ export default function CirclesPage() {
         query: { enabled: allIds.length > 0 },
     });
 
-    const loading = dbLoading && fetchingGroups;
+    // WAIT for both sources to be consistent
+    const loading = dbLoading || (allIds.length > 0 && fetchingGroups);
 
-    // 4. Merge: Supabase (Fast) + Contract (Live Round)
-    const enrichedCircles: Circle[] = allIds.map((id, i) => {
-        const idStr = id.toString();
-        const dbMatch = dbCircles.find(c => c.id === idStr);
-        const gResult = groupsData?.[i]?.result as any;
-        const bResult = phasesData?.[i]?.result as any;
+    // 4. Merge: Supabase (Primary) + Contract (Live Phase)
+    const enrichedCircles = allIds
+        .map((id, i) => {
+            const idStr = id.toString();
+            const dbMatch = dbCircles.find(c => c.id === idStr);
+            
+            if (!dbMatch) return null;
 
-        // Try to get moderator from Contract -> DB -> Fallback
-        const moderator = gResult?.[1] || gResult?.moderator || dbMatch?.moderator || "Unknown";
+            const bResult = phasesData?.[i]?.result as any;
+            const phase = bResult ? Number(bResult[5] || bResult.phase || 0) : 0;
 
-        // Try to get values from Contract -> DB -> Defaults
-        const fixedDeposit = gResult
-            ? Number(gResult[2] || gResult.fixedDeposit || 0)
-            : (dbMatch?.fixedDeposit || 0);
-
-        const maxParticipants = gResult
-            ? Number(gResult[4] || gResult.maxParticipants || 0)
-            : (dbMatch?.maxParticipants || 0);
-
-        const phase = bResult
-            ? Number(bResult[5] || bResult.phase || 0)
-            : 0;
-
-        return {
-            id: idStr,
-            moderator,
-            fixedDeposit,
-            maxParticipants,
-            isPublic: gResult ? (gResult[6] ?? gResult.isPublic) : (dbMatch?.isPublic ?? true),
-            phase
-        };
-    }).filter(c => c.id !== "0" || c.moderator !== "Unknown"); // Filter out the 'ghost' group 0 if empty
+            return {
+                id: idStr,
+                moderator: dbMatch.moderator,
+                fixedDeposit: dbMatch.fixedDeposit,
+                maxParticipants: dbMatch.maxParticipants,
+                isPublic: dbMatch.isPublic,
+                phase
+            };
+        })
+        .filter((c) => c !== null && c.moderator !== "0x0000000000000000000000000000000000000000") as Circle[];
 
     const phaseNames = ["Idle", "Deposits", "Bidding", "Voting", "Final", "Done"];
 

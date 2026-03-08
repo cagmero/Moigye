@@ -7,6 +7,7 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { GYE_MANAGER_CONTRACT, BIDDING_ENGINE_CONTRACT } from "@/lib/contracts";
 import Link from "next/link";
 import VaultPanel from "@/components/VaultPanel";
+import { supabase } from "@/utils/supabaseClient";
 
 
 export default function CircleRoomPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +16,33 @@ export default function CircleRoomPage({ params }: { params: Promise<{ id: strin
     const groupId = BigInt(id);
 
     const [myBid, setMyBid] = useState("");
+    const [dbGroup, setDbGroup] = useState<any>(null);
+    const [dbLoading, setDbLoading] = useState(true);
+
+    // Fetch group metadata from Supabase
+    useEffect(() => {
+        const fetchGroup = async () => {
+            setDbLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from("groups")
+                    .select("*")
+                    .eq("group_id", id)
+                    .single();
+
+                if (error) {
+                    console.error("Supabase fetch error:", error);
+                } else if (data) {
+                    console.log("Fetched group from Supabase:", data);
+                    setDbGroup(data);
+                }
+            } catch (err) {
+                console.error("Error fetching group:", err);
+            }
+            setDbLoading(false);
+        };
+        fetchGroup();
+    }, [id]);
 
     // 1. Read group metadata from GyeManager (always populated after createGroup)
     const { data: gyeGroup, isLoading: gyeLoading } = useReadContract({
@@ -96,7 +124,7 @@ export default function CircleRoomPage({ params }: { params: Promise<{ id: strin
     };
 
     // Loading state
-    if (gyeLoading || !gyeGroup) {
+    if (gyeLoading || dbLoading || (!gyeGroup && !dbGroup)) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full" />
@@ -104,9 +132,13 @@ export default function CircleRoomPage({ params }: { params: Promise<{ id: strin
         );
     }
 
-    // Destructure GyeManager group (9 fields: groupId, moderator, fixedDeposit, minScoreRequired, maxParticipants, biddingDate, isPublic, isActive, started)
-    const gyeData = gyeGroup as readonly [bigint, string, bigint, bigint, bigint, bigint, boolean, boolean, boolean];
-    const [gGroupId, moderator, fixedDeposit, , maxParticipants, biddingDate, isPublic, , started] = gyeData;
+    // Use Supabase data as primary source, fallback to contract
+    const moderator = dbGroup?.moderator || (gyeGroup as any)?.[1] || "";
+    const fixedDeposit = dbGroup?.fixed_deposit ? BigInt(dbGroup.fixed_deposit) : (gyeGroup as any)?.[2] || 0n;
+    const maxParticipants = dbGroup?.max_participants ? BigInt(dbGroup.max_participants) : (gyeGroup as any)?.[4] || 0n;
+    const biddingDate = dbGroup?.created_at ? BigInt(Math.floor(new Date(dbGroup.created_at).getTime() / 1000)) : (gyeGroup as any)?.[5] || 0n;
+    const isPublic = dbGroup?.is_public ?? (gyeGroup as any)?.[6] ?? true;
+    const started = dbGroup?.is_auction_started ?? (gyeGroup as any)?.[8] ?? false;
 
     // Destructure BiddingEngine group (8 fields)
     const bidData = biddingGroup as readonly [bigint, bigint, bigint, bigint, string, number, bigint, bigint] | undefined;

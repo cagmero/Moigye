@@ -140,34 +140,34 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
                         </div>
                     </div>
                 ) : (
-                    moderatedGroups.map((group) => (
-                        <div key={group.id.toString()} className="glass-morphism p-10 rounded-[3rem] space-y-8 border border-white/40 shadow-premium relative overflow-hidden">
+                    moderatedGroups.map(({ id, isPublic, fixedDeposit, started, pendingRequests }: any) => (
+                        <div key={id.toString()} className="glass-morphism p-10 rounded-[3rem] space-y-8 border border-white/40 shadow-premium relative overflow-hidden">
                             {/* Group Header */}
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-8 border-b border-slate-100/50">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-3">
-                                        <h3 className="text-3xl font-black text-slate-900 tracking-tight">Circle #{group.id.toString()}</h3>
-                                        <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${group.isPublic ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
-                                            {group.isPublic ? "Public" : "Private"}
+                                        <h3 className="text-3xl font-black text-slate-900 tracking-tight">Circle #{id.toString()}</h3>
+                                        <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isPublic ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
+                                            {isPublic ? "Public" : "Private"}
                                         </span>
                                     </div>
-                                    <p className="text-sm font-bold text-slate-400">Fixed Deposit: ${group.fixedDeposit.toString()} MoigyeUSD</p>
+                                    <p className="text-sm font-bold text-slate-400">Fixed Deposit: ${fixedDeposit.toString()} MoigyeUSD</p>
                                 </div>
 
-                                {!group.started ? (
+                                {!started ? (
                                     <motion.button
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        onClick={() => handleStartAuction(group.id)}
+                                        onClick={() => handleStartAuction(id)}
                                         disabled={isMutating || isConfirming || syncing}
                                         className="premium-button flex items-center gap-3 px-8 py-4 bg-emerald-600 shadow-emerald-600/20 disabled:opacity-50"
                                     >
-                                        {(isMutating || isConfirming || syncing) && startingGroupId === group.id ? (
+                                        {(isMutating || isConfirming || syncing) && startingGroupId === id ? (
                                             <Loader2 className="w-5 h-5 animate-spin fill-current" />
                                         ) : (
                                             <Play className="w-5 h-5 fill-current" />
                                         )}
-                                        {syncing && startingGroupId === group.id ? "Syncing..." : "Start Auction Room"}
+                                        {syncing && startingGroupId === id ? "Syncing..." : "Start Auction Room"}
                                     </motion.button>
                                 ) : (
                                     <div className="flex items-center gap-2 px-6 py-4 bg-emerald-50 text-emerald-600 rounded-2xl font-black border border-emerald-100">
@@ -179,12 +179,12 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
 
                             {/* Pending Requests */}
                             <div className="space-y-6">
-                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-2">Pending Requests ({group.pendingRequests.length})</h4>
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-2">Pending Requests ({pendingRequests.length})</h4>
                                 <div className="space-y-4">
-                                    {group.pendingRequests.length === 0 ? (
+                                    {pendingRequests.length === 0 ? (
                                         <p className="text-sm font-medium text-slate-400 italic px-2">No pending join requests for this circle.</p>
                                     ) : (
-                                        group.pendingRequests.map((req: string) => (
+                                        pendingRequests.map((req: string) => (
                                             <div key={req} className="flex items-center justify-between p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 transition-all hover:bg-white hover:shadow-sm">
                                                 <div className="flex items-center gap-5">
                                                     <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 shadow-sm">
@@ -197,13 +197,13 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
                                                 </div>
                                                 <div className="flex gap-3">
                                                     <button
-                                                        onClick={() => handleAction(group.id, req, "decline")}
+                                                        onClick={() => handleAction(id, req, "decline")}
                                                         className="p-4 bg-slate-100 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-colors"
                                                     >
                                                         <XCircle className="w-6 h-6" />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleAction(group.id, req, "approve")}
+                                                        onClick={() => handleAction(id, req, "approve")}
                                                         className="px-8 py-4 bg-slate-900 text-white font-black rounded-2xl hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2"
                                                     >
                                                         <CheckCircle2 className="w-5 h-5" />
