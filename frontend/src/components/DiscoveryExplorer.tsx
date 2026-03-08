@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Globe, Calendar, ArrowRight, Loader2, XCircle, Lock, Star } from "lucide-react";
-import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useReadContracts } from "wagmi";
 import { useAccount } from "wagmi";
 import { GYE_MANAGER_CONTRACT } from "@/lib/contracts";
 import { useUserSync, minScoreForDeposit, getTier } from "@/hooks/useUserSync";
@@ -56,33 +56,47 @@ export default function DiscoveryExplorer({ onBack }: { onBack: () => void }) {
         query: { enabled: dbGroups.length > 0 },
     });
 
-    // 2. Join Group Logic — award +10 score on success
-    const { writeContract, data: hash, isPending: isJoining } = useWriteContract();
-    const { isLoading: isConfirming, isSuccess: isJoinConfirmed } = useWaitForTransactionReceipt({ hash });
+    // 2. Join Group Logic - instant, no TX
     const [joiningGroupId, setJoiningGroupId] = useState<number | null>(null);
 
-    useEffect(() => {
-        if (isJoinConfirmed && address && joiningGroupId !== null) {
-            // Award +10 score on confirmed deposit/join
-            const awardScore = async () => {
-                const { error } = await supabase.rpc("increment_score", {
-                    p_wallet: address.toLowerCase(),
-                    p_amount: 10,
+    const handleJoin = async (groupId: number) => {
+        if (!address) return;
+        
+        setJoiningGroupId(groupId);
+        try {
+            // Add member instantly
+            const { error: memberError } = await supabase
+                .from("group_members")
+                .insert({
+                    group_id: groupId,
+                    wallet_address: address.toLowerCase(),
                 });
-                if (error) console.warn("Score increment error:", error.message);
-            };
-            awardScore();
+            
+            if (memberError && !memberError.message.includes('duplicate')) {
+                throw memberError;
+            }
+
+            // Award +10 score
+            await supabase.rpc("increment_score", {
+                p_wallet: address.toLowerCase(),
+                p_amount: 10,
+            });
+
+            console.log("✅ Joined instantly:", groupId);
+            
+            // Refresh data
+            const { data } = await supabase
+                .from("groups")
+                .select("*")
+                .eq("is_public", true)
+                .order("group_id", { ascending: false });
+            if (data) setDbGroups(data);
+        } catch (error) {
+            console.error("Join error:", error);
+            alert("Failed to join group");
+        } finally {
             setJoiningGroupId(null);
         }
-    }, [isJoinConfirmed, address, joiningGroupId]);
-
-    const handleJoin = (groupId: number) => {
-        setJoiningGroupId(groupId);
-        writeContract({
-            ...GYE_MANAGER_CONTRACT,
-            functionName: "joinPublicGroup",
-            args: [BigInt(groupId)],
-        });
     };
 
     const isLoading = dbLoading || (dbGroups.length > 0 && !contractGroups);
@@ -229,7 +243,7 @@ export default function DiscoveryExplorer({ onBack }: { onBack: () => void }) {
                             const requiredScore = minScoreForDeposit(group.fixedDeposit);
                             const scoreLocked = score < requiredScore;
                             const isFull = group.currentParticipants >= group.maxParticipants;
-                            const isThisJoining = joiningGroupId === group.groupId && (isJoining || isConfirming);
+                            const isThisJoining = joiningGroupId === group.groupId;
 
                             return (
                                 <motion.div
@@ -315,9 +329,14 @@ export default function DiscoveryExplorer({ onBack }: { onBack: () => void }) {
                                                 whileTap={{ scale: 0.98 }}
                                                 disabled={isThisJoining || userSyncLoading || isFull}
                                                 onClick={() => handleJoin(group.groupId)}
-                                                className={`w-full premium-button py-4 text-sm ${isThisJoining ? "bg-slate-200" : ""} disabled:opacity-50`}
+                                                className={`w-full premium-button py-4 text-sm ${isThisJoining ? "bg-slate-200" : ""} disabled:opacity-50 disabled:cursor-not-allowed`}
                                             >
-                                                {isThisJoining ? "Joining..." : isFull ? "Group Full" : "Join Circle"}
+                                                {isThisJoining ? (
+                                                    <span className="flex items-center justify-center gap-2">
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                        Joining...
+                                                    </span>
+                                                ) : isFull ? "Group Full" : "Join Instantly"}
                                             </motion.button>
                                         )}
                                     </div>

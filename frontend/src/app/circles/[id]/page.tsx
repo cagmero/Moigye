@@ -8,6 +8,7 @@ import { GYE_MANAGER_CONTRACT, BIDDING_ENGINE_CONTRACT } from "@/lib/contracts";
 import Link from "next/link";
 import VaultPanel from "@/components/VaultPanel";
 import { supabase } from "@/utils/supabaseClient";
+import ModeratorControls from "@/components/ModeratorControls";
 
 
 export default function CircleRoomPage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,6 +44,15 @@ export default function CircleRoomPage({ params }: { params: Promise<{ id: strin
         };
         fetchGroup();
     }, [id]);
+
+    const refetchGroup = () => {
+        supabase
+            .from("groups")
+            .select("*")
+            .eq("group_id", id)
+            .single()
+            .then(({ data }) => data && setDbGroup(data));
+    };
 
     // 1. Read group metadata from GyeManager (always populated after createGroup)
     const { data: gyeGroup, isLoading: gyeLoading } = useReadContract({
@@ -209,80 +219,13 @@ export default function CircleRoomPage({ params }: { params: Promise<{ id: strin
                             </div>
                         </div>
 
-                        {/* Start Auction — only visible to the moderator before auction starts */}
-                        {moderator?.toLowerCase() === address?.toLowerCase() && !auctionStarted && (
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={handleStartAuction}
-                                disabled={isSubmitting || isConfirming}
-                                className="w-full flex items-center justify-center gap-3 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl transition-colors shadow-lg shadow-emerald-600/20 disabled:opacity-60"
-                            >
-                                {(isSubmitting || isConfirming)
-                                    ? <><Loader2 className="w-5 h-5 animate-spin" /> {isConfirming ? "Confirming..." : "Starting..."}</>
-                                    : <><Play className="w-5 h-5 fill-current" /> Start Auction Round</>
-                                }
-                            </motion.button>
-                        )}
-                        {moderator?.toLowerCase() === address?.toLowerCase() && auctionStarted && (
-                            <div className="space-y-3">
-                                {/* Phase indicator */}
-                                <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-slate-400 px-1">
-                                    <span>Auction Phase</span>
-                                    <span className={`px-3 py-1 rounded-full ${phase === 0 ? "bg-slate-100 text-slate-600" :
-                                        phase === 1 ? "bg-amber-50 text-amber-700" :
-                                            phase === 2 ? "bg-emerald-50 text-emerald-700" :
-                                                "bg-blue-50 text-blue-700"
-                                        }`}>
-                                        {phaseNames[phase] ?? "Unknown"}
-                                    </span>
-                                </div>
-                                {/* Phase 0: Idle → open deposit window */}
-                                {phase === 0 && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                                        onClick={handleOpenDeposits}
-                                        disabled={isSubmitting || isConfirming}
-                                        className="w-full flex items-center justify-center gap-2 py-3 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl transition-colors disabled:opacity-60"
-                                    >
-                                        {(isSubmitting || isConfirming) ? <><Loader2 className="w-4 h-4 animate-spin" /> Working...</> : "→ Open Deposit Window"}
-                                    </motion.button>
-                                )}
-                                {/* Phase 1: Deposit → start Round 1 bidding */}
-                                {phase === 1 && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                                        onClick={handleStartBidding}
-                                        disabled={isSubmitting || isConfirming}
-                                        className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl transition-colors disabled:opacity-60"
-                                    >
-                                        {(isSubmitting || isConfirming) ? <><Loader2 className="w-4 h-4 animate-spin" /> Working...</> : <><Play className="w-4 h-4 fill-current" /> Start Round 1 Bidding</>}
-                                    </motion.button>
-                                )}
-                                {/* Phase 2: Active Bidding */}
-                                {phase === 2 && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                                        onClick={handleEndBidding}
-                                        disabled={isSubmitting || isConfirming}
-                                        className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white font-black rounded-2xl transition-colors disabled:opacity-60"
-                                    >
-                                        {(isSubmitting || isConfirming) ? <><Loader2 className="w-4 h-4 animate-spin" /> Stopping...</> : "Stop Bidding & Start Voting"}
-                                    </motion.button>
-                                )}
-                                {/* Phase 3: Voting */}
-                                {phase === 3 && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                                        onClick={handleFinalizeRound}
-                                        disabled={isSubmitting || isConfirming}
-                                        className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl transition-colors disabled:opacity-60"
-                                    >
-                                        {(isSubmitting || isConfirming) ? <><Loader2 className="w-4 h-4 animate-spin" /> Finalizing...</> : "Finalize Round & Select Winner"}
-                                    </motion.button>
-                                )}
-                            </div>
-                        )}
+                        <ModeratorControls
+                            groupId={groupId}
+                            moderator={moderator}
+                            currentPhase={phase}
+                            userAddress={address}
+                            onPhaseChange={refetchGroup}
+                        />
                     </div>
 
                     {/* Top Bidder (only if auction started) */}

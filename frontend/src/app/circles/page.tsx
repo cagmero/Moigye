@@ -26,6 +26,7 @@ export default function CirclesPage() {
     const { address } = useAccount();
     const [dbCircles, setDbCircles] = useState<Circle[]>([]);
     const [dbLoading, setDbLoading] = useState(true);
+    const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
 
     // 1. Fetch from Supabase (Stored Metadata)
     useEffect(() => {
@@ -49,6 +50,19 @@ export default function CirclesPage() {
                         maxParticipants: Number(row.max_participants) || 0,
                         isPublic: !!row.is_public
                     })));
+
+                    // Fetch member counts
+                    const { data: memberData } = await supabase
+                        .from("group_members")
+                        .select("group_id");
+
+                    if (memberData) {
+                        const counts: Record<string, number> = {};
+                        memberData.forEach(m => {
+                            counts[m.group_id] = (counts[m.group_id] || 0) + 1;
+                        });
+                        setMemberCounts(counts);
+                    }
                 } else {
                     console.log("No groups found in Supabase");
                     setDbCircles([]);
@@ -195,8 +209,8 @@ export default function CirclesPage() {
                                             <p className="text-lg font-black text-slate-900">${circle.fixedDeposit.toLocaleString()}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Max Members</p>
-                                            <p className="text-lg font-black text-slate-900">{circle.maxParticipants}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Members</p>
+                                            <p className="text-lg font-black text-slate-900">{memberCounts[circle.id] || 0} / {circle.maxParticipants}</p>
                                         </div>
                                     </div>
 
