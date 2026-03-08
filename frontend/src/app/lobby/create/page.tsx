@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Globe, Shield, ArrowRight, Loader2 } from "lucide-react";
-import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract } from "wagmi";
 import { GYE_MANAGER_CONTRACT } from "@/lib/contracts";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabaseClient";
 
 export default function CreatePage() {
     const router = useRouter();
@@ -15,20 +16,61 @@ export default function CreatePage() {
     const [maxParticipants, setMaxParticipants] = useState("10");
     const [biddingDate, setBiddingDate] = useState("");
 
+    // Track the group_id that will be assigned (= current nextGroupId before tx)
+    const pendingGroup = useRef<{
+        groupId: number;
+        deposit: string;
+        maxParticipants: string;
+        isPublic: boolean;
+    } | null>(null);
+
+    const { data: nextGroupId } = useReadContract({
+        ...GYE_MANAGER_CONTRACT,
+        functionName: "nextGroupId",
+    });
+
     const { writeContract, data: hash, isPending: isCreating } = useWriteContract();
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
     useEffect(() => {
-        if (isConfirmed) router.push("/lobby");
-    }, [isConfirmed, router]);
+        if (isConfirmed && address && pendingGroup.current) {
+            const { groupId, deposit, maxParticipants, isPublic: pub } = pendingGroup.current;
+
+            // Insert into Supabase — matching reset-db.sql schema exactly
+            supabase
+                .from("groups")
+                .insert({
+                    group_id: groupId,
+                    moderator: address.toLowerCase(),
+                    fixed_deposit: Number(deposit),
+                    max_participants: Number(maxParticipants),
+                    is_public: pub,
+                    min_score_required: 0,
+                    is_auction_started: false,
+                })
+                .then(({ error }) => {
+                    if (error) console.warn("Supabase group sync error:", error.message);
+                    else console.log("✅ Group synced to Supabase:", groupId);
+                });
+
+            pendingGroup.current = null;
+            router.push("/circles");
+        }
+    }, [isConfirmed, address, router]);
 
     const handleCreateGroup = () => {
         if (!deposit || !maxParticipants || !biddingDate || isCreating || !address) return;
         const dateTimestamp = Math.floor(new Date(biddingDate).getTime() / 1000);
+        const minScore = BigInt(0);
+
+        // Snapshot form values for Supabase sync after confirmation
+        pendingGroup.current = { groupId: Number(nextGroupId ?? 0), deposit, maxParticipants, isPublic };
+
         writeContract({
             ...GYE_MANAGER_CONTRACT,
             functionName: "createGroup",
-            args: [isPublic, BigInt(deposit), BigInt(maxParticipants), BigInt(dateTimestamp)],
+            args: [isPublic, BigInt(deposit), minScore, BigInt(maxParticipants), BigInt(dateTimestamp)],
+            gas: BigInt(500000),
         });
     };
 

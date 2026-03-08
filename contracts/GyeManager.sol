@@ -89,6 +89,10 @@ contract GyeManager is Ownable {
         scoreManager = IScoreManager(_scoreManager);
     }
 
+    function setBiddingEngine(address _biddingEngine) external onlyOwner {
+        biddingEngine = IBiddingEngine(_biddingEngine);
+    }
+
     function createGroup(
         bool _isPublic,
         uint256 _fixedDeposit,

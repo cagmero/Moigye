@@ -62,7 +62,7 @@ export default function CirclesPage() {
     const myCircles: Circle[] = (groupsData || [])
         .map((res) => {
             if (res && res.status === "success" && Array.isArray(res.result)) {
-                const [groupId, moderator, fixedDeposit, maxParticipants, biddingDate, isPublic, isCircleActive, started] = res.result;
+                const [groupId, moderator, fixedDeposit, minScoreRequired, maxParticipants, biddingDate, isPublic, isCircleActive, started] = res.result;
 
                 return {
                     id: (groupId as bigint || BigInt(0)).toString(),

@@ -85,13 +85,15 @@ export default function LandingPage() {
                 Join the Lobby
               </motion.button>
             </Link>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="secondary-button text-lg px-12 py-6 bg-white border border-slate-200"
-            >
-              The Whitepaper
-            </motion.button>
+            <Link href="/whitepaper">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="secondary-button text-lg px-12 py-6 bg-white border border-slate-200"
+              >
+                The Whitepaper
+              </motion.button>
+            </Link>
           </motion.div>
         </motion.div>
       </section>

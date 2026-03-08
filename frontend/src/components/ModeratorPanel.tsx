@@ -77,6 +77,7 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
             ...GYE_MANAGER_CONTRACT,
             functionName: "startAuction",
             args: [groupId],
+            gas: BigInt(500000),
         });
     };
 
@@ -88,10 +89,11 @@ export default function ModeratorPanel({ onBack }: { onBack: () => void }) {
             const requestsRes = groupsData[i * 2 + 1];
 
             if (groupRes.status === "success" && requestsRes.status === "success") {
-                const [groupId, moderator, fixedDeposit, maxParticipants, biddingDate, isPublic, isCircleActive, started] =
-                    (groupRes.result as any) as [bigint, `0x${string}`, bigint, bigint, bigint, boolean, boolean, boolean];
+                // 9 fields: groupId, moderator, fixedDeposit, minScoreRequired, maxParticipants, biddingDate, isPublic, isActive, started
+                const [groupId, moderator, fixedDeposit, minScoreRequired, maxParticipants, biddingDate, isPublic, isCircleActive, started] =
+                    (groupRes.result as any) as [bigint, `0x${string}`, bigint, bigint, bigint, bigint, boolean, boolean, boolean];
 
-                if (moderator === address) {
+                if (moderator?.toLowerCase() === address?.toLowerCase()) {
                     moderatedGroups.push({
                         id: groupId,
                         fixedDeposit,
